@@ -4,3 +4,9 @@ CMakeCache.txt
 cmake_install.cmake
 *.elf
 Makefile
+3DS-Chess.smdh
+3DS-Chess.3dsx
+gfx
+romfs
+.vscode
+assets/*.png
