@@ -7,9 +7,11 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories(src)
 
 set(SOURCES
-src/piece.cpp
-src/chess.cpp
-src/main.cpp
+  src/chess/piece.cpp
+  src/chess/move.cpp
+  src/chess/board.cpp
+  src/game.cpp
+  src/main.cpp
 )
 
 add_executable(3DS-Chess ${SOURCES})
