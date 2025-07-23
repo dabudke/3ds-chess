@@ -41,7 +41,6 @@ void Game::handleInput(u32 kDown, u32 kHeld, u32 kUp, touchPosition &touchPos)
       // handle touch
       unsigned char col = floor((tx - 40) / 30);
       unsigned char row = 7 - floor(ty / 30);
-      std::cout << "touch row: " << (unsigned int)row << " touch col: " << (unsigned int)col << std::endl;
 
       // TODO - handle move with legalMovesForSelectedSquare
 
@@ -51,10 +50,6 @@ void Game::handleInput(u32 kDown, u32 kHeld, u32 kUp, touchPosition &touchPos)
       {
         setSelectedSquare(row, col);
         dragging = true;
-      }
-      else
-      {
-        board.makeMove(getSelectedSquare(), row + col * 8);
       }
     }
   }
@@ -70,8 +65,17 @@ void Game::handleInput(u32 kDown, u32 kHeld, u32 kUp, touchPosition &touchPos)
   if (kUp & KEY_TOUCH)
   {
     dragging = false;
-    std::cout << "drag end" << std::endl;
-    // TODO - move piece??
+
+    // TODO - legal piece moves
+    if ((dragPosition.dx) >= 40 && (dragPosition.dx < 280))
+    {
+      unsigned char col = floor((dragPosition.dx - 40) / 30);
+      unsigned char row = 7 - floor(dragPosition.dy / 30);
+
+      std::cout << "drop row: " << static_cast<unsigned int>(row) << " col: " << static_cast<unsigned int>(col) << std::endl;
+
+      board.makeMove(selectedSquare, row * 8 + col);
+    }
   }
 }
 

@@ -83,6 +83,10 @@ namespace Chess
     {
       throw std::out_of_range("Square index out of bounds");
     }
+    if (fromSquare == toSquare)
+    {
+      return false;
+    }
 
     // make move
     Piece piece = getPiece(fromSquare);
