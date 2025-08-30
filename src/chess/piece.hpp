@@ -28,34 +28,35 @@ namespace Chess
     static const unsigned char Queen = 0b1010;
     static const unsigned char King = 0b1100;
 
-    unsigned char pieceType;
+    unsigned char piece;
 
-    Piece() : pieceType(0x00) {} // Default constructor for empty piece
-    Piece(unsigned char color, unsigned char type) : pieceType(color | type) {}
+    Piece() : piece(0x00) {} // Default constructor for empty piece
+    Piece(unsigned char color, unsigned char type) : piece(color | type) {}
+    Piece(unsigned char piece) : piece(piece) {}
 
     unsigned char color() const
     {
-      return pieceType & 0x01;
+      return piece & 0x01;
     }
     unsigned char type() const
     {
-      return pieceType & 0b1110; // Mask to get the type bits
+      return piece & 0b1110; // Mask to get the type bits
     }
 
     int spriteIndex() const
     {
-      return pieceType - 2;
+      return piece - 2;
     }
 
     static const Piece Empty;
 
     bool operator==(const Piece &other) const
     {
-      return pieceType == other.pieceType;
+      return piece == other.piece;
     }
     bool operator!=(const Piece &other) const
     {
-      return pieceType != other.pieceType;
+      return piece != other.piece;
     }
   };
 }
