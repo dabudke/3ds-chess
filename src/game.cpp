@@ -4,6 +4,8 @@
 #include <iostream>
 #include <citro2d.h>
 #include "common.hpp"
+#include "chess/move.hpp"
+#include <algorithm>
 
 void Game::setSelectedSquare(unsigned char square)
 {
@@ -26,7 +28,10 @@ void Game::setSelectedSquare(unsigned char square)
 
   // get legal move spaces for selected square
   legalMovesForSelectedSquare.clear();
-  // TODO - get legal moves for selected square
+  for (auto move : board.getLegalMovesForSquare(square))
+  {
+    legalMovesForSelectedSquare.push_back(move);
+  }
 }
 
 void Game::handleInput(u32 kDown, u32 kHeld, u32 kUp, touchPosition &touchPos)
@@ -34,15 +39,23 @@ void Game::handleInput(u32 kDown, u32 kHeld, u32 kUp, touchPosition &touchPos)
   // handle touch down/start drag
   if (kDown & KEY_TOUCH)
   {
-    u16 tx{touchPos.px}, ty{touchPos.py};
+    u16 touchX{touchPos.px}, touchY{touchPos.py};
 
-    if (tx >= 40 && tx < 280)
+    if (touchX >= 40 && touchX < 280)
     {
       // handle touch
-      unsigned char col = floor((tx - 40) / 30);
-      unsigned char row = 7 - floor(ty / 30);
+      unsigned char col = (touchX - 40) / 30;
+      unsigned char row = 7 - touchY / 30;
 
       // TODO - handle move with legalMovesForSelectedSquare
+      for (auto move : legalMovesForSelectedSquare)
+      {
+        if (move.endSquare() == row * 8 + col)
+        {
+          makeMove(move);
+          return;
+        }
+      }
 
       Chess::Piece piece = board.getPiece(row, col);
       // TODO - piece color check
@@ -52,6 +65,13 @@ void Game::handleInput(u32 kDown, u32 kHeld, u32 kUp, touchPosition &touchPos)
         dragging = true;
       }
     }
+  }
+  if (kDown & KEY_B)
+  {
+    setSelectedSquare(noSelection);
+    dragging = false;
+    board.unmakeMove();
+    return;
   }
 
   // handle drag
@@ -69,35 +89,47 @@ void Game::handleInput(u32 kDown, u32 kHeld, u32 kUp, touchPosition &touchPos)
     // TODO - legal piece moves
     if ((dragPosition.dx) >= 40 && (dragPosition.dx < 280))
     {
-      unsigned char col = floor((dragPosition.dx - 40) / 30);
-      unsigned char row = 7 - floor(dragPosition.dy / 30);
+      unsigned char col = (dragPosition.dx - 40) / 30;
+      unsigned char row = 7 - dragPosition.dy / 30;
 
-      std::cout << "drop row: " << static_cast<unsigned int>(row) << " col: " << static_cast<unsigned int>(col) << std::endl;
+      if (row * 8 + col == selectedSquare)
+      {
+        return; // same square, no move
+      }
 
-      board.makeMove(selectedSquare, row * 8 + col);
+      makeMove(selectedSquare, row * 8 + col);
     }
   }
 }
 
 void Game::render()
 {
+  TickCounter renderTickCounter;
+  osTickCounterStart(&renderTickCounter);
   unsigned char selectedSquare = getSelectedSquare();
 
   int row{0}, col{0};
   u32 squareColor{0};
   Chess::Piece piece{};
   C2D_Image pieceImage;
+  Chess::Move lastMove = board.getLastMove();
+  bool previousMove = lastMove != Chess::Move::Empty;
   for (int i{0}; i < 64; i++)
   {
     // draw board
     row = 7 - floor(i / 8);
     col = i % 8;
     squareColor = (row + col) % 2 == 0 ? Color::WhiteSquare : Color::BlackSquare;
-
     C2D_DrawRectSolid(col * 30 + 40, row * 30, 0, 30, 30, squareColor);
+
     if (selectedSquare == i)
     {
       C2D_DrawRectSolid(col * 30 + 40, row * 30, 0, 30, 30, Color::SelectedSquare);
+    }
+
+    if (previousMove && (lastMove.startSquare() == i || lastMove.endSquare() == i))
+    {
+      C2D_DrawRectSolid(col * 30 + 40, row * 30, 0, 30, 30, Color::PreviousMove);
     }
 
     piece = board.getPiece(i);
@@ -118,6 +150,12 @@ void Game::render()
   }
 
   // draw legal moves
+  for (auto move : legalMovesForSelectedSquare)
+  {
+    row = 7 - floor(move.endSquare() / 8);
+    col = move.endSquare() % 8;
+    C2D_DrawCircleSolid(col * 30 + 40 + 15, row * 30 + 15, 0, 5, Color::LegalMove);
+  }
 
   // draw held piece
   if (dragging)
@@ -129,4 +167,7 @@ void Game::render()
       C2D_DrawImageAt(pieceImage, dragPosition.dx - 15, dragPosition.dy - 15, 1);
     }
   }
+
+  osTickCounterUpdate(&renderTickCounter);
+  // std::cout << "Render time: " << osTickCounterRead(&renderTickCounter) << "ms" << std::endl;
 }

@@ -19,7 +19,7 @@ protected:
   // selected piece
 
   unsigned char selectedSquare{noSelection};
-  std::vector<unsigned char> legalMovesForSelectedSquare;
+  std::vector<Chess::Move> legalMovesForSelectedSquare;
   bool dragging{false};
   struct DragPosition
   {
@@ -35,10 +35,18 @@ public:
 
   bool makeMove(unsigned char fromSquare, unsigned char toSquare)
   {
+    selectedSquare = noSelection; // reset selected square
+    legalMovesForSelectedSquare.clear();
     return board.makeMove(fromSquare, toSquare);
   }
+  bool makeMove(const Chess::Move &move)
+  {
+    selectedSquare = noSelection; // reset selected square
+    legalMovesForSelectedSquare.clear();
+    return board.makeMove(move.startSquare(), move.endSquare());
+  };
 
-  static const unsigned short noSelection = 65;
+  static const unsigned char noSelection = 65;
   unsigned char getSelectedSquare() const
   {
     return selectedSquare;
@@ -49,7 +57,7 @@ public:
     setSelectedSquare(col + row * 8);
   }
 
-  const std::vector<unsigned char> &getLegalMovesForSelectedSquare() const
+  const std::vector<Chess::Move> &getLegalMovesForSelectedSquare() const
   {
     return legalMovesForSelectedSquare;
   }
