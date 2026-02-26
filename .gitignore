@@ -1,5 +1,5 @@
 CMakeFiles
-build
+build*
 CMakeCache.txt
 cmake_install.cmake
 *.elf
@@ -10,3 +10,4 @@ gfx
 romfs
 .vscode
 assets/*.png
+.DS_Store
