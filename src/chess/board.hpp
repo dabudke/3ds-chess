@@ -8,26 +8,34 @@ namespace Chess
   class Board
   {
   public:
-    // static or helper utils
+#pragma region static/helper utils
 
-    static inline unsigned char square(int row, int col)
+    static constexpr uint8_t square(int row, int col)
     {
-      return row * 8 + col;
+      return (row << 3) + col;
     }
-    static inline bool rowOffsetInBounds(unsigned char square, int rowOffset)
+    static constexpr bool rowOffsetInBounds(unsigned char square, int rowOffset)
     {
-      int row = square / 8 + rowOffset;
+      int row = (square >> 3) + rowOffset;
       return (0 <= row) && (row < 8);
     }
-    static inline bool colOffsetInBounds(unsigned char square, int colOffset)
+    static constexpr uint8_t rowOffset(unsigned char square, int rowOffset)
     {
-      int col = square % 8 + colOffset;
+      return square + (rowOffset << 3);
+    }
+    static constexpr bool colOffsetInBounds(unsigned char square, int colOffset)
+    {
+      int col = (square & 0x7) + colOffset;
       return (0 <= col) && (col < 8);
     }
-    static inline bool squareOffsetInBounds(unsigned char square, int rowOffset, int colOffset)
+    static constexpr uint8_t colOffset(unsigned char square, int colOffset)
     {
-      int newRow = square / 8 + rowOffset;
-      int newCol = square % 8 + colOffset;
+      return square + colOffset;
+    }
+    static constexpr bool squareOffsetInBounds(unsigned char square, int rowOffset, int colOffset)
+    {
+      int newRow = (square >> 3) + rowOffset;
+      int newCol = (square & 0x7) + colOffset;
 
       if (newRow < 0 || newRow >= 8)
         return false;
@@ -35,23 +43,48 @@ namespace Chess
         return false;
       return true;
     }
-    static inline unsigned char squareOffset(unsigned char square, int rowOffset, int colOffset)
+    static constexpr uint8_t squareOffset(uint8_t square, int rowOffset, int colOffset)
     {
       return square + rowOffset * 8 + colOffset;
     }
 
-    static inline unsigned char squareRow(unsigned char square)
+    static constexpr uint8_t squareRow(uint8_t square)
     {
-      return square / 8;
+      return square >> 3;
     }
-    static inline unsigned char squareCol(unsigned char square)
+    static constexpr uint8_t squareCol(uint8_t square)
     {
-      return square % 8;
+      return square & 0x7;
     }
 
-    Board(std::string fen); // forward declaration
+    static constexpr uint64_t bitmaskForSquare(uint8_t square)
+    {
+      return static_cast<uint64_t>(1) << square;
+    }
+    static constexpr uint64_t bitmaskForRow(uint8_t row)
+    {
+      return static_cast<uint64_t>(0xFF) << (row * 8);
+    }
+    static constexpr uint64_t bitmaskForCol(uint8_t col)
+    {
+      return 0x0101010101010101ULL << col;
+    }
 
-    // board state
+    inline static int pieceToIndex(Piece::Type type, Piece::Color color)
+    {
+      return type - Piece::Pawn + color;
+    }
+    inline static constexpr int pieceToIndex(const Piece &piece)
+    {
+      return piece.piece - Piece::Pawn;
+    }
+
+    /// @brief create a board from FEN string
+    /// @param fen FEN string to parse
+    Board(std::string fen);
+
+// board state
+#pragma region board state
 
     class StateHistory; // forward declaration
     /// @brief container for a single snapshot of board state
@@ -60,12 +93,12 @@ namespace Chess
       // when initializing from FEN
       friend Board::Board(std::string fen);
       friend StateHistory;
-      // `0x0001` - white kingside castle available
-      // `0x0002` - black kingside castle available
-      // `0x0004` - white queenside castle available
-      // `0x0008` - black queenside castle available
-      // `0x0010` - en passant available
-      // `0x00E0` - en passant target file
+      // `0x01` - white kingside castle available
+      // `0x02` - black kingside castle available
+      // `0x04` - white queenside castle available
+      // `0x08` - black queenside castle available
+      // `0x10` - en passant available
+      // `0xE0` - en passant target file
       uint8_t state{0x0F};
       // last made move (uint16)
       Move move{Move::Empty};
@@ -98,13 +131,13 @@ namespace Chess
         lastCapture = capture;
       }
 
-      static const uint16_t whiteCastleKingsideMask = 0x01;
-      static const uint16_t blackCastleKingsideMask = 0x02;
-      static const uint16_t whiteCastleQueensideMask = 0x04;
-      static const uint16_t blackCastleQueensideMask = 0x08;
-      static const uint16_t enPassantAvailabilityMask = 0x10;
+      static const uint8_t whiteCastleKingsideMask = 0x01;
+      static const uint8_t blackCastleKingsideMask = 0x02;
+      static const uint8_t whiteCastleQueensideMask = 0x04;
+      static const uint8_t blackCastleQueensideMask = 0x08;
+      static const uint8_t enPassantAvailabilityMask = 0x10;
       static const unsigned int enPassantFileShift = 5;
-      static const uint16_t enPassantFileMask = 0xE0;
+      static const uint8_t enPassantFileMask = 0xE0;
 
     public:
       bool canWhiteCastleKingside() const
@@ -252,17 +285,236 @@ namespace Chess
       }
     };
 
-  private:
-    /// @brief the great chessboard, 8 rows and 8 column
-    Piece board[64];
+    struct PieceIndex
+    {
+      /// @brief piece index entry; singly linked list
+      struct Entry
+      {
+        uint8_t square;
+        Entry *next;
+        Entry(uint8_t square) : square{square}, next{nullptr} {}
+      };
 
+    private:
+      Entry *entryRoots[12]{nullptr};
+
+    public:
+      PieceIndex()
+      {
+        for (int i{0}; i < 12; i++)
+        {
+          entryRoots[i] = nullptr;
+        }
+      }
+
+      /// @brief get pointer to first entry in piece index
+      /// @param piece piece to get the index for
+      /// @return pointer to the first index entry
+      inline const Entry *getIndex(Piece::Type type, Piece::Color color) const
+      {
+        return entryRoots[pieceToIndex(type, color)];
+      }
+      inline const Entry *getIndex(const Piece &piece) const
+      {
+        return entryRoots[pieceToIndex(piece)];
+      }
+      /// @brief get a specific entry in the piece index
+      /// @param piece piece to retrieve the entry for
+      /// @param square square to look for in index
+      /// @return reference to that specific entry
+      inline Entry &getEntry(const Piece &piece, uint8_t square)
+      {
+        Entry *entry{entryRoots[pieceToIndex(piece)]};
+        while (entry && entry->square != square)
+          entry = entry->next;
+        if (!entry)
+          throw std::runtime_error("requesting entry that does not exist");
+        return *entry;
+      }
+
+      /// @brief remove an entry from the piece index
+      /// @param piece piece index to remove from
+      /// @param square square to remove from piece index
+      inline void popEntry(const Piece &piece, uint8_t square)
+      {
+        Entry **entryRoot{&(entryRoots[pieceToIndex(piece)])};
+        if ((*entryRoot)->square == square)
+        {
+          // entry root is the node to delete
+          Entry *toDelete{*entryRoot};
+          *entryRoot = toDelete->next;
+          delete toDelete;
+        }
+        else
+        {
+          // start from root, iterate until the next entry is the square we want
+          Entry *entry{*entryRoot};
+          while (entry->next->square != square)
+            entry = entry->next;
+
+          // store pointer to entry to delete
+          Entry *toDelete = entry->next;
+          // unlink from list
+          entry->next = toDelete->next;
+          delete toDelete;
+        }
+      }
+
+      /// @brief add an entry to the piece index
+      /// @param piece piece index to add to
+      /// @param square square to place in the index
+      inline void addEntry(const Piece &piece, uint8_t square)
+      {
+        Entry **entryRoot{&(entryRoots[pieceToIndex(piece)])};
+        if (*entryRoot == nullptr)
+          // index root is empty
+          *entryRoot = new Entry(square);
+        else
+        {
+          Entry *entry{*entryRoot};
+          while (entry->next != nullptr)
+            entry = entry->next;
+          entry->next = new Entry(square);
+        }
+      }
+    };
+
+  private:
     /// @brief helper object to manage state and history of the board
     StateHistory state;
 
+#pragma region pieces
+    /// @brief the great chessboard, 8 rows and 8 column
+    /// @note to discuss - do we need this representation?
+    /// theoretically, bitboards and piece indexes give all the info we need
+    Piece board[64];
+
+    /// @brief structure for accessing and modifying pieces indices
+    PieceIndex pieceIndex;
+
+    /// @brief structure for accessing bitboards for all pieces
+    struct Bitboards
+    {
+    private:
+      uint64_t bitboards[12]{0};
+
+    public:
+      /// @brief get a reference to a bitboard with piece type and color
+      /// @param type type of piece to retrieve bitboard for
+      /// @param color color of piece to retrieve bitboard for
+      /// @return reference to the bitboard for that piece
+      uint64_t &getBitboard(const Piece::Type &type, const Piece::Color &color)
+      {
+        // piece type - rook = values 0-6 -> *2 to get even values 0-12
+        // add color to get odd indexes for black
+        return bitboards[pieceToIndex(type, color)];
+      }
+      /// @brief get a reference to a bitboard for a certain piece
+      /// @param piece piece to retrieve the bitboard for
+      /// @return reference to the bitboard for the piece
+      uint64_t &getBitboard(const Piece &piece)
+      {
+        return bitboards[pieceToIndex(piece)];
+      }
+
+      /// @brief calculate a bitboard for all white pieces
+      /// @return bitboard of all white pieces
+      uint64_t getWhitePiecesBitboard() const
+      {
+        uint64_t bitboard{0};
+        for (int i{0}; i < 12; i += 2)
+        {
+          bitboard |= bitboards[i];
+        }
+        return bitboard;
+      }
+      /// @brief calculate bitboard for all black pieces
+      /// @return bitboard of all black pieces
+      uint64_t getBlackPiecesBitboard() const
+      {
+        uint64_t bitboard{0};
+        for (int i{1}; i < 12; i += 2)
+        {
+          bitboard |= bitboards[i];
+        }
+        return bitboard;
+      }
+      /// @brief calculate bitboard for all pieces
+      /// @return bitboard of all pieces
+      uint64_t getAllPiecesBitboard() const
+      {
+        uint64_t bitboard{0};
+        for (int i{0}; i < 12; i++)
+        {
+          bitboard |= bitboards[i];
+        };
+        return bitboard;
+      }
+    } bitboards;
+
+    /// @brief move a piece in the board array and corresponding bitboard and pieceindex
+    /// @param piece reference to piece to move
+    /// @param target square the piece is on
+    /// @param destination square to move the piece to
+    inline void movePiece(const Piece &piece, unsigned char square, unsigned char destination);
+
+    /// @brief remove a piece from the board array and corresponding bitboard and pieceindex
+    /// @param piece reference to the piece to remove
+    /// @param square square the piece is on
+    inline void removePiece(const Piece &piece, unsigned char square);
+
+    /// @brief summon a piece that was previously removed (or just spawn a new one idc)
+    /// @param piece reference to the piece to manifest
+    /// @param square square to summon the piece on
+    inline void summonPiece(const Piece &piece, unsigned char square);
+
+    /// @brief transform the piece from its current type to the new type and move it
+    /// @param piece reference to the piece as it is
+    /// @param square square the piece is currently on
+    /// @param destination square to move the piece to
+    /// @param newType type to transform the piece into
+    inline void moveAndTransformPiece(const Piece &piece, unsigned char square, unsigned char destination, Piece::Type newType);
+
   public:
+#pragma region piece getters
+    inline uint64_t getBitboard(Piece::Type type, Piece::Color color)
+    {
+      return bitboards.getBitboard(type, color);
+    }
+
+    inline uint64_t getWhitePieceBitboard() const
+    {
+      return bitboards.getWhitePiecesBitboard();
+    }
+    inline uint64_t getBlackPieceBitboard() const
+    {
+      return bitboards.getBlackPiecesBitboard();
+    }
+    inline uint64_t getPieceBitboard() const
+    {
+      return bitboards.getAllPiecesBitboard();
+    }
+
+    inline const PieceIndex::Entry *getPieceIndex(const Piece &piece)
+    {
+      return pieceIndex.getIndex(piece);
+    }
+
+    /// @brief retrieve the piece at the given index
+    /// @param index index of the square [0,64)
+    /// @return the piece at that given index
+    Piece getPiece(int index) const;
+    /// @brief retrieve the peice at the given row and column
+    /// @param row
+    /// @param col
+    /// @return the piece at that given row and column
+    Piece getPiece(int row, int col) const;
+
+#pragma region gameplay
+
     static const std::string initialFenString;
 
-    Board() : Board(initialFenString) {};
+    Board() : Board(initialFenString) {}
 
     inline unsigned short getHalfmove() const
     {
@@ -277,39 +529,94 @@ namespace Chess
       return state.currentTurnIsBlack();
     }
 
-    /// @brief retrieve the piece at the given index
-    /// @param index index of the square [0,64)
-    /// @return the piece at that given index
-    Piece getPiece(int index) const;
-    /// @brief retrieve the peice at the given row and column
-    /// @param row
-    /// @param col
-    /// @return the piece at that given row and column
-    Piece getPiece(int row, int col) const;
+    const std::vector<Move> getLegalPawnMoves(Piece::Color color, unsigned char square) const;
+    const std::vector<Move> getLegalRookMoves(Piece::Color color, unsigned char square) const;
+    const std::vector<Move> getLegalKnightMoves(Piece::Color color, unsigned char square) const;
+    const std::vector<Move> getLegalBishopMoves(Piece::Color color, unsigned char square) const;
+    const std::vector<Move> getLegalQueenMoves(Piece::Color color, unsigned char square) const;
+    const std::vector<Move> getLegalKingMoves(Piece::Color color, unsigned char square) const;
 
     /// @brief generate legal moves for the specified square
     /// @param square square to generate moves for
     /// @return vector containing all the moves
-    const std::vector<Move> getLegalMovesForSquare(unsigned char square) const;
+    inline const std::vector<Move> getLegalMovesForSquare(unsigned char square) const
+    {
+      const Piece &piece = getPiece(square);
+      switch (piece.type())
+      {
+      case Piece::Pawn:
+        return getLegalPawnMoves(piece.color(), square);
+      case Piece::Rook:
+        return getLegalRookMoves(piece.color(), square);
+      case Piece::Knight:
+        return getLegalKnightMoves(piece.color(), square);
+      case Piece::Bishop:
+        return getLegalBishopMoves(piece.color(), square);
+      case Piece::Queen:
+        return getLegalQueenMoves(piece.color(), square);
+      case Piece::King:
+        return getLegalKingMoves(piece.color(), square);
+      default:
+        return std::vector<Move>{};
+      }
+    }
     /// @brief helper function to generate all legal moves on the board
     /// @return all legal moves at current board state
-    const std::vector<Move> getLegalMoves() const
+    // TODO - rename getAllLegalMoves
+    inline const std::vector<Move> getLegalMoves() const
     {
       std::vector<Move> legalMoves;
-      for (int i = 0; i < 64; i++)
+      Piece::Color currentTurn{whiteMove() ? Piece::White : Piece::Black};
+
+      for (auto piece{pieceIndex.getIndex(Piece::Pawn, currentTurn)};
+           piece != nullptr; piece = piece->next)
       {
-        if (getPiece(i) == Piece::Empty)
-          continue; // skip empty squares
-        auto moves = getLegalMovesForSquare(i);
+        auto moves = getLegalPawnMoves(currentTurn, piece->square);
         legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
       }
+      for (auto piece{pieceIndex.getIndex(Piece::Rook, currentTurn)};
+           piece != nullptr; piece = piece->next)
+      {
+        auto moves = getLegalRookMoves(currentTurn, piece->square);
+        legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
+      }
+      for (auto piece{pieceIndex.getIndex(Piece::Knight, currentTurn)};
+           piece != nullptr; piece = piece->next)
+      {
+        auto moves = getLegalKnightMoves(currentTurn, piece->square);
+        legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
+      }
+      for (auto piece{pieceIndex.getIndex(Piece::Bishop, currentTurn)};
+           piece != nullptr; piece = piece->next)
+      {
+        auto moves = getLegalBishopMoves(currentTurn, piece->square);
+        legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
+      }
+      for (auto piece{pieceIndex.getIndex(Piece::Queen, currentTurn)};
+           piece != nullptr; piece = piece->next)
+      {
+        auto moves = getLegalQueenMoves(currentTurn, piece->square);
+        legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
+      }
+      for (auto piece{pieceIndex.getIndex(Piece::King, currentTurn)};
+           piece != nullptr; piece = piece->next)
+      {
+        auto moves = getLegalKingMoves(currentTurn, piece->square);
+        legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
+      }
+
       return legalMoves;
     }
 
-    /// @brief make the move previously generated by getLegalMoves
+    /// @brief make (apply) the move previously generated by getLegalMoves
+    /// technically a helper for making moves in search
     /// @param move move generated by getLegalMoves
-    /// @return if the move could be made or not. Might error in the future
     void makeMove(const Move &move);
+    /// @brief attempt to make a move on the board, checking legality
+    /// @param startSquare
+    /// @param endSquare
+    /// @return whether or not the move could be successfully made
+    bool makeMove(uint8_t startSquare, uint8_t endSquare);
     /// @brief unmake the previous move
     void unmakeMove();
 

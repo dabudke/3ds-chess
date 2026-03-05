@@ -5,6 +5,7 @@
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlrenderer3.h>
 #include "game.hpp"
+#include "chess/board.hpp"
 
 static SDL_Texture *whitePawn;
 static SDL_Texture *blackPawn;
@@ -193,6 +194,148 @@ namespace Debugger
     SDL_FRect destRect;
     Chess::Move lastMove = board.getCurrentState().getPreviousMove();
     Chess::Piece piece;
+
+    uint64_t bitboard{0};
+    switch (renderBitboard)
+    {
+    case All:
+      bitboard = board.getPieceBitboard();
+      break;
+    case White:
+      bitboard = board.getWhitePieceBitboard();
+      break;
+    case Black:
+      bitboard = board.getBlackPieceBitboard();
+      break;
+
+    case Col0:
+      bitboard = board.bitmaskForCol(0);
+      break;
+    case Row0:
+      bitboard = board.bitmaskForRow(0);
+      break;
+
+    default:
+    {
+      Chess::Piece::Type bitboardType{0};
+      Chess::Piece::Color bitboardColor{0};
+
+      switch (renderBitboard)
+      {
+      case WhitePawn:
+      case WhiteRook:
+      case WhiteKnight:
+      case WhiteBishop:
+      case WhiteQueen:
+      case WhiteKing:
+        bitboardColor = Chess::Piece::White;
+        break;
+
+      case BlackPawn:
+      case BlackRook:
+      case BlackKnight:
+      case BlackBishop:
+      case BlackQueen:
+      case BlackKing:
+        bitboardColor = Chess::Piece::Black;
+      default:
+        break;
+      }
+      switch (renderBitboard)
+      {
+      case WhitePawn:
+      case BlackPawn:
+        bitboardType = Chess::Piece::Pawn;
+        break;
+      case WhiteRook:
+      case BlackRook:
+        bitboardType = Chess::Piece::Rook;
+        break;
+      case WhiteKnight:
+      case BlackKnight:
+        bitboardType = Chess::Piece::Knight;
+        break;
+      case WhiteBishop:
+      case BlackBishop:
+        bitboardType = Chess::Piece::Bishop;
+        break;
+      case WhiteQueen:
+      case BlackQueen:
+        bitboardType = Chess::Piece::Queen;
+        break;
+      case WhiteKing:
+      case BlackKing:
+        bitboardType = Chess::Piece::King;
+      default:
+        break;
+      }
+
+      bitboard = board.getBitboard(bitboardType, bitboardColor);
+    }
+    }
+
+    const Chess::Board::PieceIndex::Entry *pieceIndex{nullptr};
+    if (renderIndexes != None)
+    {
+      Chess::Piece::Color indexColor;
+      switch (renderIndexes)
+      {
+      case RenderDebugInfo::WhitePawn:
+      case RenderDebugInfo::WhiteRook:
+      case RenderDebugInfo::WhiteKnight:
+      case RenderDebugInfo::WhiteBishop:
+      case RenderDebugInfo::WhiteQueen:
+      case RenderDebugInfo::WhiteKing:
+        indexColor = Chess::Piece::White;
+        break;
+
+      case RenderDebugInfo::BlackPawn:
+      case RenderDebugInfo::BlackRook:
+      case RenderDebugInfo::BlackKnight:
+      case RenderDebugInfo::BlackBishop:
+      case RenderDebugInfo::BlackQueen:
+      case RenderDebugInfo::BlackKing:
+        indexColor = Chess::Piece::Black;
+      default:
+        break;
+      }
+
+      Chess::Piece::Type indexType;
+      switch (renderIndexes)
+      {
+      case RenderDebugInfo::WhitePawn:
+      case RenderDebugInfo::BlackPawn:
+        indexType = Chess::Piece::Pawn;
+        break;
+      case RenderDebugInfo::WhiteRook:
+      case RenderDebugInfo::BlackRook:
+        indexType = Chess::Piece::Rook;
+        break;
+      case RenderDebugInfo::WhiteKnight:
+      case RenderDebugInfo::BlackKnight:
+        indexType = Chess::Piece::Knight;
+        break;
+      case RenderDebugInfo::WhiteBishop:
+      case RenderDebugInfo::BlackBishop:
+        indexType = Chess::Piece::Bishop;
+        break;
+      case RenderDebugInfo::WhiteQueen:
+      case RenderDebugInfo::BlackQueen:
+        indexType = Chess::Piece::Queen;
+        break;
+      case RenderDebugInfo::WhiteKing:
+      case RenderDebugInfo::BlackKing:
+        indexType = Chess::Piece::King;
+        break;
+      default:
+        renderIndexes = None;
+        break;
+      }
+
+      if (renderIndexes != None)
+        pieceIndex = board.getPieceIndex(Chess::Piece(indexColor, indexType));
+    }
+
     for (int square{0}; square < 64; ++square)
     {
       int row = 7 - square / 8;
@@ -219,6 +362,7 @@ namespace Debugger
         SDL_RenderFillRect(renderer, &destRect);
       }
       piece = board.getPiece(square);
+
       if (piece != Chess::Piece::Empty)
       {
         switch (piece.type())
@@ -285,6 +429,21 @@ namespace Debugger
           break;
         }
       }
+
+      // render bitboard
+      if (renderBitboard != None)
+      {
+        if (bitboard & board.bitmaskForSquare(square))
+        {
+          SDL_SetRenderDrawColor(renderer, 255, 0, 0, 100);
+          SDL_RenderFillRect(renderer, &destRect);
+        }
+        else
+        {
+          SDL_SetRenderDrawColor(renderer, 0, 0, 255, 100);
+          SDL_RenderFillRect(renderer, &destRect);
+        }
+      }
     }
 
     const auto legalMoves = getLegalMovesForSelectedSquare();
@@ -293,7 +452,6 @@ namespace Debugger
       int row = 7 - move.endSquare() / 8;
       int col = move.endSquare() % 8;
       SDL_FRect destRect = {static_cast<float>(5 + col * 30), static_cast<float>(5 + row * 30), 30, 30};
-      // filledCircleRGBA(renderer, 5 + col * 30 + 15, 5 + row * 30 + 15, 5, 0, 0, 0, 0x80);
       SDL_RenderTexture(renderer, moveableSquare, NULL, &destRect);
     }
 
@@ -308,7 +466,18 @@ namespace Debugger
     SDL_RenderDebugText(renderer, 5, 250, board.getFenString().c_str());
     SDL_RenderDebugText(renderer, 250, 15, ("Selected square: " + std::to_string((int)selectedSquare)).c_str());
 
-    // filledCircleColor(renderer, 50, 50, 20, 0xFFFFFFFF);
+    int i{0};
+    while (pieceIndex != nullptr)
+    {
+      int row = 7 - pieceIndex->square / 8;
+      int col = pieceIndex->square % 8;
+      SDL_FRect destRect = {static_cast<float>(5 + col * 30), static_cast<float>(5 + row * 30), 30, 30};
+      SDL_SetRenderDrawColor(renderer, 0, 255, 0, 100);
+      SDL_RenderFillRect(renderer, &destRect);
+      SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+      SDL_RenderDebugTextFormat(renderer, destRect.x, destRect.y, "%d", i++);
+      pieceIndex = pieceIndex->next;
+    }
   }
 
   void Game::handleMouseDown(SDL_MouseButtonEvent *event)

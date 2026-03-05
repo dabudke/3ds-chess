@@ -12,7 +12,7 @@ namespace Chess
     // y - start square index
     // z - end square index
 
-    enum Flag : unsigned char // only 0-F!!
+    enum Flag : uint8_t // only 0-F!!
     {
       NoFlag = 0x0,
       Capture = 0x1,
@@ -34,7 +34,7 @@ namespace Chess
       QueenPromotionCapture = 0xD,
     };
 
-    unsigned short move;
+    uint16_t move;
 
     unsigned char startSquare() const
     {
@@ -49,15 +49,14 @@ namespace Chess
       return static_cast<Flag>((move >> 12) & 0x0F); // Extract the last 4 bits
     };
 
-    Move(unsigned char start, unsigned char end, Flag flags = NoFlag)
+    Move(uint8_t start, uint8_t end, Flag flags = NoFlag)
     {
       move = (flags << 12) | (end << 6) | start; // Combine into a single 16-bit number
     }
-    Move() : move(0) {}
+    consteval Move() : move(0) {}
+    static const Move Empty;
 
     std::string getNotation(Piece movedPiece) const; // returns algebraic notation of move
-
-    static const Move Empty;
 
     bool operator==(const Move &other) const
     {

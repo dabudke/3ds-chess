@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.13)
 
 project(3DS-Chess)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 include_directories(src)
 
@@ -10,7 +10,6 @@ set(CHESS_SOURCES
   "src/chess/board.cpp"
   "src/chess/piece.cpp"
   "src/chess/move.cpp"
-  "src/chess/boardState.cpp"
 )
 set(CHESS_ASSETS
   "assets/white pawn.png"

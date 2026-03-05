@@ -47,6 +47,7 @@ int main(int argc, char **argv)
 
   SDL_SetRenderVSync(renderer, true);
   SDL_SetDefaultTextureScaleMode(renderer, SDL_ScaleMode::SDL_SCALEMODE_PIXELART);
+  SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
   Debugger::Game game;
 

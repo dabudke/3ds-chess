@@ -61,6 +61,31 @@ namespace Debugger
     bool stepPerft(PerftData &data);
     void stopPerft(PerftData &data);
 
+    enum RenderDebugInfo
+    {
+      None,
+      Col0,
+      Row0,
+      All,
+      White,
+      Black,
+      WhitePawn,
+      BlackPawn,
+      WhiteRook,
+      BlackRook,
+      WhiteKnight,
+      BlackKnight,
+      WhiteBishop,
+      BlackBishop,
+      WhiteQueen,
+      BlackQueen,
+      WhiteKing,
+      BlackKing,
+    };
+    RenderDebugInfo renderBitboard{None};
+
+    RenderDebugInfo renderIndexes{None};
+
     Chess::Board board;
 
     Game() : board()
@@ -103,18 +128,15 @@ namespace Debugger
 
     void handleKeyboard(SDL_KeyboardEvent *event)
     {
-      std::cout << "key" << std::endl;
     }
     void handleMouseDown(SDL_MouseButtonEvent *event);
     void handleDrag(SDL_MouseMotionEvent *event)
     {
       if (!dragging)
         return;
-      std::cout << "Dragging" << std::endl;
     }
     void handleMouseUp(SDL_MouseButtonEvent *event)
     {
-      std::cout << "release" << std::endl;
       dragging = false;
     }
     void render(SDL_Renderer *renderer);

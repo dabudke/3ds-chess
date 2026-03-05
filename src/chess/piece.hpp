@@ -1,18 +1,18 @@
 #pragma once
 
 // 0000 - empty
-// 0010 - black pawn
-// 0011 - white pawn
-// 0100 - black rook
-// 0101 - white rook
-// 0110 - black knight
-// 0111 - white knight
-// 1000 - black bishop
-// 1001 - white bishop
-// 1010 - black queen
-// 1011 - white queen
-// 1100 - black king
-// 1101 - white king
+// 0010 - white pawn
+// 0011 - black pawn
+// 0100 - white rook
+// 0101 - black rook
+// 0110 - white knight
+// 0111 - black knight
+// 1000 - white bishop
+// 1001 - black bishop
+// 1010 - white queen
+// 1011 - black queen
+// 1100 - white king
+// 1101 - black king
 
 namespace Chess
 {
@@ -32,9 +32,9 @@ namespace Chess
 
     unsigned char piece;
 
-    Piece() : piece(0x00) {} // Default constructor for empty piece
-    Piece(Color color, Type type) : piece(color | type) {}
-    Piece(unsigned char piece) : piece(piece) {}
+    constexpr Piece() : piece(0x00) {} // Default constructor for empty piece
+    constexpr Piece(Color color, Type type) : piece(color | type) {}
+    constexpr Piece(unsigned char piece) : piece(piece) {}
 
     unsigned char color() const
     {
@@ -48,7 +48,7 @@ namespace Chess
     /// @brief promotion constructor
     /// @param other piece that is being promoted
     /// @param type type to promote to
-    Piece(const Piece &other, Type type) : piece(other.color() | type) {}
+    constexpr Piece(const Piece &other, Type type) : piece(other.color() | type) {}
 
     int spriteIndex() const
     {
