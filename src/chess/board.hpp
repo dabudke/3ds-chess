@@ -79,6 +79,10 @@ namespace Chess
       return piece.piece - Piece::Pawn;
     }
 
+    static const std::array<std::array<uint64_t, 64>, 2> pawnAttacks;
+    static const std::array<uint64_t, 64> knightAttacks;
+    static const std::array<uint64_t, 64> kingAttacks;
+
     /// @brief create a board from FEN string
     /// @param fen FEN string to parse
     Board(std::string fen);

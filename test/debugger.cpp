@@ -10,6 +10,30 @@
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlrenderer3.h>
 
+void draw(SDL_Renderer *renderer, Debugger::Game &game, Debugger::DebugEngine &debugger)
+{
+  /* choose the color for the frame we will draw. The sine wave trick makes it fade between colors smoothly. */
+  SDL_SetRenderDrawColor(renderer, 24, 25, 35, SDL_ALPHA_OPAQUE); /* new color, full alpha. */
+
+  /* clear the window to the draw color. */
+  SDL_RenderClear(renderer);
+
+  game.render(renderer);
+
+  ImGui_ImplSDLRenderer3_NewFrame();
+  ImGui_ImplSDL3_NewFrame();
+  ImGui::NewFrame();
+
+  debugger.draw();
+
+  ImGui::Render();
+  ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
+
+  /* put the newly-cleared rendering on the screen. */
+  SDL_RenderPresent(renderer);
+  SDL_Delay(16);
+}
+
 int main(int argc, char **argv)
 {
   SDL_SetAppMetadata("3DS Chess Engine Debugger", "1.0", "net.dabudke.3dschess.engineDebugger");
@@ -76,9 +100,10 @@ int main(int argc, char **argv)
       case SDL_EVENT_QUIT:
         running = false;
         break;
+
       case SDL_EVENT_WINDOW_RESIZED:
       case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
-        game.resizeWindow(event.window.data1, event.window.data2);
+        draw(renderer, game, debugger);
         break;
 
       case SDL_EVENT_MOUSE_BUTTON_DOWN:
@@ -101,26 +126,7 @@ int main(int argc, char **argv)
     }
 
     const double now = ((double)SDL_GetTicks()) / 1000.0; /* convert from milliseconds to seconds. */
-    /* choose the color for the frame we will draw. The sine wave trick makes it fade between colors smoothly. */
-    SDL_SetRenderDrawColor(renderer, 24, 25, 35, SDL_ALPHA_OPAQUE); /* new color, full alpha. */
-
-    /* clear the window to the draw color. */
-    SDL_RenderClear(renderer);
-
-    game.render(renderer);
-
-    ImGui_ImplSDLRenderer3_NewFrame();
-    ImGui_ImplSDL3_NewFrame();
-    ImGui::NewFrame();
-
-    debugger.draw();
-
-    ImGui::Render();
-    ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
-
-    /* put the newly-cleared rendering on the screen. */
-    SDL_RenderPresent(renderer);
-    SDL_Delay(16);
+    draw(renderer, game, debugger);
   }
 
   // cleanup

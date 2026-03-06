@@ -108,68 +108,142 @@ namespace Debugger
 
       if (ImGui::RadioButton("All Pieces##bitboards", game->renderBitboard == Game::RenderDebugInfo::All))
       {
+        game->renderAttackBitboard = Game::None;
+        game->selectedAttackingSquares = 0;
         game->renderBitboard = Game::RenderDebugInfo::All;
       }
       if (ImGui::RadioButton("All White Pieces##bitboards", game->renderBitboard == Game::RenderDebugInfo::White))
       {
+        game->renderAttackBitboard = Game::None;
+        game->selectedAttackingSquares = 0;
         game->renderBitboard = Game::RenderDebugInfo::White;
       }
       if (ImGui::RadioButton("All Black Pieces##bitboards", game->renderBitboard == Game::RenderDebugInfo::Black))
       {
+        game->renderAttackBitboard = Game::None;
+        game->selectedAttackingSquares = 0;
         game->renderBitboard = Game::RenderDebugInfo::Black;
       }
       if (ImGui::RadioButton("White Pawns##bitboards", game->renderBitboard == Game::RenderDebugInfo::WhitePawn))
       {
+        game->renderAttackBitboard = Game::None;
+        game->selectedAttackingSquares = 0;
         game->renderBitboard = Game::RenderDebugInfo::WhitePawn;
       }
       if (ImGui::RadioButton("Black Pawns##bitboards", game->renderBitboard == Game::RenderDebugInfo::BlackPawn))
       {
+        game->renderAttackBitboard = Game::None;
+        game->selectedAttackingSquares = 0;
         game->renderBitboard = Game::RenderDebugInfo::BlackPawn;
       }
       if (ImGui::RadioButton("White Rooks##bitboards", game->renderBitboard == Game::RenderDebugInfo::WhiteRook))
       {
+        game->renderAttackBitboard = Game::None;
+        game->selectedAttackingSquares = 0;
         game->renderBitboard = Game::RenderDebugInfo::WhiteRook;
       }
       if (ImGui::RadioButton("Black Rooks##bitboards", game->renderBitboard == Game::RenderDebugInfo::BlackRook))
       {
+        game->renderAttackBitboard = Game::None;
+        game->selectedAttackingSquares = 0;
         game->renderBitboard = Game::RenderDebugInfo::BlackRook;
       }
       if (ImGui::RadioButton("White Knights##bitboards", game->renderBitboard == Game::RenderDebugInfo::WhiteKnight))
       {
+        game->renderAttackBitboard = Game::None;
+        game->selectedAttackingSquares = 0;
         game->renderBitboard = Game::RenderDebugInfo::WhiteKnight;
       }
       if (ImGui::RadioButton("Black Knights##bitboards", game->renderBitboard == Game::RenderDebugInfo::BlackKnight))
       {
+        game->renderAttackBitboard = Game::None;
+        game->selectedAttackingSquares = 0;
         game->renderBitboard = Game::RenderDebugInfo::BlackKnight;
       }
       if (ImGui::RadioButton("White Bishops##bitboards", game->renderBitboard == Game::RenderDebugInfo::WhiteBishop))
       {
+        game->renderAttackBitboard = Game::None;
+        game->selectedAttackingSquares = 0;
         game->renderBitboard = Game::RenderDebugInfo::WhiteBishop;
       }
       if (ImGui::RadioButton("Black Bishops##bitboards", game->renderBitboard == Game::RenderDebugInfo::BlackBishop))
       {
+        game->renderAttackBitboard = Game::None;
+        game->selectedAttackingSquares = 0;
         game->renderBitboard = Game::RenderDebugInfo::BlackBishop;
       }
       if (ImGui::RadioButton("White Queens##bitboards", game->renderBitboard == Game::RenderDebugInfo::WhiteQueen))
       {
+        game->renderAttackBitboard = Game::None;
+        game->selectedAttackingSquares = 0;
         game->renderBitboard = Game::RenderDebugInfo::WhiteQueen;
       }
       if (ImGui::RadioButton("Black Queens##bitboards", game->renderBitboard == Game::RenderDebugInfo::BlackQueen))
       {
+        game->renderAttackBitboard = Game::None;
+        game->selectedAttackingSquares = 0;
         game->renderBitboard = Game::RenderDebugInfo::BlackQueen;
       }
       if (ImGui::RadioButton("White King##bitboards", game->renderBitboard == Game::RenderDebugInfo::WhiteKing))
       {
+        game->renderAttackBitboard = Game::None;
+        game->selectedAttackingSquares = 0;
         game->renderBitboard = Game::RenderDebugInfo::WhiteKing;
       }
       if (ImGui::RadioButton("Black King##bitboards", game->renderBitboard == Game::RenderDebugInfo::BlackKing))
       {
+        game->renderAttackBitboard = Game::None;
+        game->selectedAttackingSquares = 0;
         game->renderBitboard = Game::RenderDebugInfo::BlackKing;
       }
     }
 
     if (ImGui::CollapsingHeader("Attack Bitboards"))
     {
+      ImGui::BeginDisabled(game->renderAttackBitboard == Game::None);
+      if (ImGui::Button("Clear##attack bitboards"))
+      {
+        game->renderAttackBitboard = Game::None;
+        game->selectedAttackingSquares = 0;
+      }
+      ImGui::EndDisabled();
+
+      if (ImGui::RadioButton("White Attacks", game->renderAttackBitboard == Game::White))
+      {
+        game->renderBitboard = Game::None;
+        game->renderAttackBitboard = Game::White;
+        game->selectedAttackingSquares = 0;
+      }
+      if (ImGui::RadioButton("Black Attacks", game->renderAttackBitboard == Game::Black))
+      {
+        game->renderBitboard = Game::None;
+        game->renderAttackBitboard = Game::Black;
+        game->selectedAttackingSquares = 0;
+      }
+      if (ImGui::RadioButton("White Pawn##attack bitboards", game->renderAttackBitboard == Game::WhitePawn))
+      {
+        game->renderBitboard = Game::None;
+        game->renderAttackBitboard = Game::WhitePawn;
+        game->selectedAttackingSquares = 0;
+      }
+      if (ImGui::RadioButton("Black Pawn##attack bitboards", game->renderAttackBitboard == Game::BlackPawn))
+      {
+        game->renderBitboard = Game::None;
+        game->renderAttackBitboard = Game::BlackPawn;
+        game->selectedAttackingSquares = 0;
+      }
+      if (ImGui::RadioButton("Knights", game->renderAttackBitboard == Game::WhiteKnight))
+      {
+        game->renderBitboard = Game::None;
+        game->renderAttackBitboard = Game::WhiteKnight;
+        game->selectedAttackingSquares = 0;
+      }
+      if (ImGui::RadioButton("Kings", game->renderAttackBitboard == Game::WhiteKing))
+      {
+        game->renderBitboard = Game::None;
+        game->renderAttackBitboard = Game::WhiteKing;
+        game->selectedAttackingSquares = 0;
+      }
     }
 
     if (ImGui::CollapsingHeader("Move Generation"))

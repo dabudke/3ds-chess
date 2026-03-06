@@ -336,6 +336,67 @@ namespace Debugger
         pieceIndex = board.getPieceIndex(Chess::Piece(indexColor, indexType));
     }
 
+    uint64_t selectedBitboard{0};
+    uint64_t attacksBitboard{0};
+    if (renderAttackBitboard != None)
+    {
+      switch (renderAttackBitboard)
+      {
+      case Game::WhitePawn:
+      case Game::BlackPawn:
+      case Game::WhiteKnight:
+      case Game::WhiteKing:
+        if (selectedAttackingSquares != 0)
+          selectedBitboard = board.bitmaskForSquare(selectedAttackingSquares - 1);
+        break;
+      case Game::White:
+        selectedBitboard = board.getWhitePieceBitboard();
+        break;
+      case Game::Black:
+        selectedBitboard = board.getBlackPieceBitboard();
+      default:
+        break;
+      }
+      switch (renderAttackBitboard)
+      {
+      case Game::WhitePawn:
+        attacksBitboard = board.pawnAttacks[0][selectedAttackingSquares - 1];
+        break;
+      case Game::BlackPawn:
+        attacksBitboard = board.pawnAttacks[1][selectedAttackingSquares - 1];
+        break;
+      case Game::WhiteKnight:
+        attacksBitboard = board.knightAttacks[selectedAttackingSquares - 1];
+        break;
+      case Game::WhiteKing:
+        attacksBitboard = board.kingAttacks[selectedAttackingSquares - 1];
+        break;
+      case Game::White:
+        if (selectedAttackingSquares == 0)
+        {
+          for (auto piece{board.getPieceIndex(Chess::Piece(Chess::Piece::White, Chess::Piece::Pawn))}; piece != nullptr; piece = piece->next)
+            selectedAttackingSquares |= board.pawnAttacks[Chess::Piece::White][piece->square];
+          for (auto piece{board.getPieceIndex(Chess::Piece(Chess::Piece::White, Chess::Piece::Knight))}; piece != nullptr; piece = piece->next)
+            selectedAttackingSquares |= board.knightAttacks[piece->square];
+          for (auto piece{board.getPieceIndex(Chess::Piece(Chess::Piece::White, Chess::Piece::King))}; piece != nullptr; piece = piece->next)
+            selectedAttackingSquares |= board.kingAttacks[piece->square];
+        }
+      case Game::Black:
+        if (selectedAttackingSquares == 0)
+        {
+          for (auto piece{board.getPieceIndex(Chess::Piece(Chess::Piece::Black, Chess::Piece::Pawn))}; piece != nullptr; piece = piece->next)
+            selectedAttackingSquares |= board.pawnAttacks[Chess::Piece::Black][piece->square];
+          for (auto piece{board.getPieceIndex(Chess::Piece(Chess::Piece::Black, Chess::Piece::Knight))}; piece != nullptr; piece = piece->next)
+            selectedAttackingSquares |= board.knightAttacks[piece->square];
+          for (auto piece{board.getPieceIndex(Chess::Piece(Chess::Piece::Black, Chess::Piece::King))}; piece != nullptr; piece = piece->next)
+            selectedAttackingSquares |= board.kingAttacks[piece->square];
+        }
+        attacksBitboard = selectedAttackingSquares;
+      default:
+        break;
+      }
+    }
+
     for (int square{0}; square < 64; ++square)
     {
       int row = 7 - square / 8;
@@ -444,6 +505,20 @@ namespace Debugger
           SDL_RenderFillRect(renderer, &destRect);
         }
       }
+      if (renderAttackBitboard != None)
+      {
+        uint64_t bit = board.bitmaskForSquare(square);
+        if (bit & selectedBitboard)
+        {
+          SDL_SetRenderDrawColor(renderer, 0, 0, 255, 100);
+          SDL_RenderFillRect(renderer, &destRect);
+        }
+        if (bit & attacksBitboard)
+        {
+          SDL_SetRenderDrawColor(renderer, 255, 0, 0, 100);
+          SDL_RenderFillRect(renderer, &destRect);
+        }
+      }
     }
 
     const auto legalMoves = getLegalMovesForSelectedSquare();
@@ -489,23 +564,54 @@ namespace Debugger
       return; // out of bounds
 
     unsigned char square = col + row * 8;
-    for (auto move : getLegalMovesForSelectedSquare())
+
+    if (event->button == SDL_BUTTON_LEFT)
     {
-      if (move.endSquare() == square)
+      for (auto move : getLegalMovesForSelectedSquare())
       {
-        makeMove(move);
-        return;
+        if (move.endSquare() == square)
+        {
+          makeMove(move);
+          return;
+        }
+      }
+
+      Chess::Piece piece = board.getPiece(square);
+      if (piece != Chess::Piece::Empty && piece.color() == (board.whiteMove() ? Chess::Piece::White : Chess::Piece::Black))
+      {
+        setSelectedSquare(square);
+        dragging = true;
+        dragPosition.dx = event->x;
+        dragPosition.dy = event->y;
       }
     }
-
-    Chess::Piece piece = board.getPiece(square);
-    if (piece != Chess::Piece::Empty && piece.color() == (board.whiteMove() ? Chess::Piece::White : Chess::Piece::Black))
+    else if (event->button == SDL_BUTTON_RIGHT)
     {
-      setSelectedSquare(square);
-      dragging = true;
-      dragPosition.dx = event->x;
-      dragPosition.dy = event->y;
+      switch (renderAttackBitboard)
+      {
+      case WhitePawn:
+      case BlackPawn:
+      case WhiteKnight:
+      case WhiteKing:
+        selectedAttackingSquares = square + 1;
+        break;
+
+        // TODO - multi-select squares
+
+      default:
+        break;
+      }
     }
+  }
+
+  void Game::handleMouseUp(SDL_MouseButtonEvent *event)
+  {
+    if (!dragging)
+      return;
+
+    uint8_t row = static_cast<int>(dragPosition.dx);
+
+    dragging = false;
   }
 
   void Game::resetBoard()

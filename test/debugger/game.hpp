@@ -27,12 +27,6 @@ namespace Debugger
       int dy;
     } dragPosition{0, 0};
 
-    struct WindowSize
-    {
-      int w;
-      int h;
-    } windowSize{640, 480};
-
     void generateLegalMovesForSquare()
     {
       legalMovesForSelectedSquare.clear();
@@ -86,14 +80,14 @@ namespace Debugger
 
     RenderDebugInfo renderIndexes{None};
 
+    RenderDebugInfo renderAttackBitboard{None};
+    uint64_t selectedAttackingSquares{0};
+
     Chess::Board board;
 
-    Game() : board()
-    {
-    }
-    Game(std::string fen) : board(fen)
-    {
-    }
+    Game() : board() {}
+    Game(std::string fen) : board(fen) {}
+
     void loadTextures(SDL_Renderer *renderer);
 
     void makeMove(const Chess::Move &move)
@@ -134,16 +128,11 @@ namespace Debugger
     {
       if (!dragging)
         return;
+      dragPosition.dx = event->x;
+      dragPosition.dy = event->y;
     }
-    void handleMouseUp(SDL_MouseButtonEvent *event)
-    {
-      dragging = false;
-    }
+    void handleMouseUp(SDL_MouseButtonEvent *event);
     void render(SDL_Renderer *renderer);
-    void resizeWindow(int w, int h)
-    {
-      windowSize = {w, h};
-    }
 
     void resetBoard();
     void importFEN(std::string &fen)
