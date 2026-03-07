@@ -7,9 +7,13 @@ set(CMAKE_CXX_STANDARD 20)
 include_directories(src)
 
 set(CHESS_SOURCES
-  "src/chess/board.cpp"
   "src/chess/piece.cpp"
   "src/chess/move.cpp"
+  "src/chess/board/attacks.cpp"
+  "src/chess/board/moveGen.cpp"
+  "src/chess/board/moves.cpp"
+  "src/chess/board/fen.cpp"
+  "src/chess/board/state.cpp"
 )
 set(CHESS_ASSETS
   "assets/white pawn.png"
@@ -67,6 +71,8 @@ ctr_create_3dsx(3DS-Chess
 else()
 
 # PC Debugging Builds (or UCI engine)
+
+add_compile_definitions(DEBUG)
 
 set(IMGUI_SOURCES
   "vendored/imgui/backends/imgui_impl_sdlrenderer3.cpp"

@@ -1,6 +1,7 @@
 #pragma once
 #include "chess/piece.hpp"
 #include "chess/move.hpp"
+#include "chess/board/state.hpp"
 #include <vector>
 
 namespace Chess
@@ -90,205 +91,6 @@ namespace Chess
 // board state
 #pragma region board state
 
-    class StateHistory; // forward declaration
-    /// @brief container for a single snapshot of board state
-    class State
-    {
-      // when initializing from FEN
-      friend Board::Board(std::string fen);
-      friend StateHistory;
-      // `0x01` - white kingside castle available
-      // `0x02` - black kingside castle available
-      // `0x04` - white queenside castle available
-      // `0x08` - black queenside castle available
-      // `0x10` - en passant available
-      // `0xE0` - en passant target file
-      uint8_t state{0x0F};
-      // last made move (uint16)
-      Move move{Move::Empty};
-      // fifty move counter
-      uint8_t fiftyMoveCounter{0};
-      // last capture (uint8)
-      Chess::Piece lastCapture{Piece::Empty};
-
-      // u8 + u16 + u8 + u8 = 5 bytes
-      // probably the smallest i can make this
-
-      State() {}
-      State(uint16_t state, Move &move, uint8_t fiftyMoveCounter, Chess::Piece &lastCapture) : state(state), move(move), fiftyMoveCounter(fiftyMoveCounter), lastCapture(lastCapture) {}
-
-      /// @brief copy state for making a move - all pushState functions should
-      /// only need to deal with castling legality changes
-      /// @param other previous state to copy from
-      /// @param moveMade move that this state will represent
-      /// @param resetFiftyMove reset the fifty move counter instead of increment
-      State(const State &previous, const Move &moveMade, bool resetFiftyMove = false)
-      {
-        // copy state
-        state = previous.state & 0x0F; // only keep castling state, not en passant
-        if (!resetFiftyMove)
-          fiftyMoveCounter = previous.fiftyMoveCounter + 1;
-        move = moveMade;
-      }
-      State(const State &previous, const Move &moveMade, Piece &capture) : State(previous, moveMade, true)
-      {
-        lastCapture = capture;
-      }
-
-      static const uint8_t whiteCastleKingsideMask = 0x01;
-      static const uint8_t blackCastleKingsideMask = 0x02;
-      static const uint8_t whiteCastleQueensideMask = 0x04;
-      static const uint8_t blackCastleQueensideMask = 0x08;
-      static const uint8_t enPassantAvailabilityMask = 0x10;
-      static const unsigned int enPassantFileShift = 5;
-      static const uint8_t enPassantFileMask = 0xE0;
-
-    public:
-      bool canWhiteCastleKingside() const
-      {
-        return (state & whiteCastleKingsideMask) != 0;
-      }
-      bool canBlackCastleKingside() const
-      {
-        return (state & blackCastleKingsideMask) != 0;
-      }
-      bool canWhiteCastleQueenside() const
-      {
-        return (state & whiteCastleQueensideMask) != 0;
-      }
-      bool canBlackCastleQueenside() const
-      {
-        return (state & blackCastleQueensideMask) != 0;
-      }
-      bool enPassantAvailable() const
-      {
-        return (state & enPassantAvailabilityMask) != 0;
-      }
-      int getEnPassantFile() const
-      {
-        return (state & enPassantFileMask) >> enPassantFileShift;
-      }
-      unsigned char getFiftyMoveCounter() const
-      {
-        return fiftyMoveCounter;
-      }
-
-      const Piece &getLastCapture() const
-      {
-        return lastCapture;
-      }
-      const Move &getPreviousMove() const
-      {
-        return move;
-      }
-    };
-
-    /// @brief container of all board history
-    class StateHistory
-    {
-      // importing games from FEN/PGN - starting halfmove (fullmove - 1 * 2) + black turn?
-      unsigned short startHalfmove{0};
-      // turn is decided by halfmove
-      unsigned short current{0};
-      // history of state (6000 is an arbitrary number)
-      static const size_t historySize{6000};
-      State history[historySize];
-
-    public:
-      inline unsigned short currentHalfmove() const
-      {
-        return current + startHalfmove;
-      }
-      inline unsigned short currentFullmove() const
-      {
-        return (current + startHalfmove) / 2 + 1;
-      }
-
-      inline bool currentTurnIsWhite() const
-      {
-        return current % 2 == 0;
-      }
-      inline bool currentTurnIsBlack() const
-      {
-        return current % 2 == 1;
-      }
-
-      inline const State &getStateAtHalfmove(int halfmove) const
-      {
-        return history[halfmove - startHalfmove];
-      }
-
-      inline const State &getStateMovesAgo(int halfmovesAgo) const
-      {
-        return history[current - halfmovesAgo];
-      }
-
-      inline const State &getCurrentState() const
-      {
-        return history[current];
-      }
-
-      inline const std::vector<Move> getMoveHistory() const
-      {
-        std::vector<Move> moves;
-        if (current >= 1)
-          for (int i{1}; i <= current; i++)
-          {
-            moves.push_back(history[i].move);
-          }
-        return moves;
-      }
-
-      // state change operations
-      // all Board functions that return StateHistory (which should be *none*)
-      // can't call these non-const functions. thanks c++.
-      void pushInitialState(int halfmove, State &initialState)
-      {
-        if (startHalfmove != 0 || current != 0)
-          throw std::runtime_error("trying to push initial state and rewrite history");
-        startHalfmove = halfmove;
-        history[0] = initialState;
-      }
-
-      enum CastlingChange
-      {
-        None = 0x0,
-        KingMove = 0x1,
-        KingsideRookMove = 0x2,
-        QueensideRookMove = 0x4,
-      };
-
-      /// @brief push ~~boring~~ state to the history
-      /// @param move move that has been made
-      /// @param movedPiece piece that has been moved (mainly for 50-move rule)
-      /// @param castlingChange specific piece movement that cancels castling right
-      void pushState(const Move &move, Chess::Piece movedPiece, CastlingChange castlingChange = None);
-
-      /// @brief push state showing capture
-      /// @param move move that has been made
-      /// @param capturedPiece piece that was just captured
-      /// @param castlingChange piece movement that cancels castling rights
-      void pushCaptureState(const Move &move, Chess::Piece capturedPiece, CastlingChange castlingChange = None);
-
-      void pushPawnDoubleMoveState(const Move &move);
-
-      /// @brief push state representing a castle
-      /// @param move castle move performed
-      void pushCastleState(const Move &move);
-
-      /// @brief 'unmake' previous move in state
-      /// @return state reference for the move that is being unmade
-      /// \attention Do not use returned state after pushing new state.
-      const State &popSnapshot()
-      {
-        if (current <= 0)
-          throw std::runtime_error("popping state beyond initial state");
-        State &prevState = history[current];
-        current--;
-        return prevState;
-      }
-    };
-
     struct PieceIndex
     {
       /// @brief piece index entry; singly linked list
@@ -355,7 +157,6 @@ namespace Chess
           Entry *entry{*entryRoot};
           while (entry->next->square != square)
             entry = entry->next;
-
           // store pointer to entry to delete
           Entry *toDelete = entry->next;
           // unlink from list
@@ -385,7 +186,7 @@ namespace Chess
 
   private:
     /// @brief helper object to manage state and history of the board
-    StateHistory state;
+    BoardUtils::StateHistory state;
 
 #pragma region pieces
     /// @brief the great chessboard, 8 rows and 8 column
@@ -460,27 +261,74 @@ namespace Chess
     /// @param piece reference to piece to move
     /// @param target square the piece is on
     /// @param destination square to move the piece to
-    inline void movePiece(const Piece &piece, unsigned char square, unsigned char destination);
+    inline void movePiece(const Piece &piece, unsigned char square, unsigned char destination)
+    {
+      pieceIndex.getEntry(piece, square).square = destination;
+      bitboards.getBitboard(piece) ^= bitmaskForSquare(square) | bitmaskForSquare(destination);
+      board[destination] = piece;
+      board[square] = Piece::Empty;
+    }
 
     /// @brief remove a piece from the board array and corresponding bitboard and pieceindex
     /// @param piece reference to the piece to remove
     /// @param square square the piece is on
-    inline void removePiece(const Piece &piece, unsigned char square);
+    inline void removePiece(const Piece &piece, unsigned char square)
+    {
+      // remove entry in piece index
+      pieceIndex.popEntry(piece, square);
+      // unset bit in bitboard
+      bitboards.getBitboard(piece) &= ~bitmaskForSquare(square);
+      // remove piece from board array
+      board[square] = Piece::Empty;
+    }
 
     /// @brief summon a piece that was previously removed (or just spawn a new one idc)
     /// @param piece reference to the piece to manifest
     /// @param square square to summon the piece on
-    inline void summonPiece(const Piece &piece, unsigned char square);
+    inline void summonPiece(const Piece &piece, unsigned char square)
+    {
+      pieceIndex.addEntry(piece, square);
+      bitboards.getBitboard(piece) |= bitmaskForSquare(square);
+      board[square] = piece;
+    }
 
     /// @brief transform the piece from its current type to the new type and move it
     /// @param piece reference to the piece as it is
     /// @param square square the piece is currently on
     /// @param destination square to move the piece to
     /// @param newType type to transform the piece into
-    inline void moveAndTransformPiece(const Piece &piece, unsigned char square, unsigned char destination, Piece::Type newType);
+    inline void moveAndTransformPiece(const Piece &piece, unsigned char square, unsigned char destination, Piece::Type newType)
+    {
+      // create new piece, so possible references to old piece aren't invalidated
+      Piece newPiece = Piece(piece, newType);
+
+      // remove piece from initial bitboard
+      pieceIndex.popEntry(piece, square);
+      bitboards.getBitboard(piece) &= ~bitmaskForSquare(square);
+      board[square] = Piece::Empty;
+
+      pieceIndex.addEntry(newPiece, destination);
+      bitboards.getBitboard(newPiece) |= bitmaskForSquare(destination);
+      board[destination] = newPiece;
+    }
+
+#pragma region attacks/pins
+
+    /// @brief check if square is attacked by any enemy piece
+    /// @param occupancy occupancy bitboard
+    /// @param square square to check for attacks on
+    /// @return if the square is attacked by any piece
+    bool squareIsAttacked(const uint64_t &occupancy, uint8_t square);
+
+    /// @brief get pieces that attack given square (i.e. get the knight
+    /// that needs capturing as it is giving check)
+    /// @param occupancy occupancy bitboard
+    /// @param square square to check for attackers on
+    /// @return bitboard of all attackers
+    uint64_t squareAttackedBy(uint64_t occupancy, uint8_t square);
 
   public:
-#pragma region piece getters
+#pragma region getters
     inline uint64_t getBitboard(Piece::Type type, Piece::Color color)
     {
       return bitboards.getBitboard(type, color);
@@ -504,21 +352,39 @@ namespace Chess
       return pieceIndex.getIndex(piece);
     }
 
-    /// @brief retrieve the piece at the given index
-    /// @param index index of the square [0,64)
-    /// @return the piece at that given index
-    Piece getPiece(int index) const;
-    /// @brief retrieve the peice at the given row and column
-    /// @param row
-    /// @param col
-    /// @return the piece at that given row and column
-    Piece getPiece(int row, int col) const;
+    /// @brief return a snapshot of the current state
+    /// @return snapshot of current state
+    const BoardUtils::State &getCurrentState() const
+    {
+      return state.getCurrentState();
+    }
+    bool canWhiteCastleKingside() const
+    {
+      return state.getCurrentState().canWhiteCastleKingside();
+    }
+    bool canBlackCastleKingside() const
+    {
+      return state.getCurrentState().canBlackCastleKingside();
+    }
+    bool canWhiteCastleQueenside() const
+    {
+      return state.getCurrentState().canWhiteCastleQueenside();
+    }
+    bool canBlackCastleQueenside() const
+    {
+      return state.getCurrentState().canBlackCastleQueenside();
+    }
 
-#pragma region gameplay
+    /// @brief Get the FEN string of the current position
+    /// @return FEN string of current position
+    std::string getFenString() const;
 
-    static const std::string initialFenString;
-
-    Board() : Board(initialFenString) {}
+    /// @brief get a vector containing all previous moves made
+    /// @return vector containing all previous moves made
+    const std::vector<Move> getMoveHistory() const
+    {
+      return state.getMoveHistory();
+    }
 
     inline unsigned short getHalfmove() const
     {
@@ -532,6 +398,37 @@ namespace Chess
     {
       return state.currentTurnIsBlack();
     }
+
+    /// @brief retrieve the piece at the given index
+    /// @param index index of the square [0,64)
+    /// @return the piece at that given index
+    const Piece getPiece(int index) const
+    {
+#ifdef DEBUG
+      if (index < 0 || index >= 64)
+        throw std::out_of_range("board index out of bounds");
+#endif
+      return board[index];
+    }
+    /// @brief retrieve the peice at the given row and column
+    /// @param row
+    /// @param col
+    /// @return the piece at that given row and column
+    const Piece getPiece(int row, int col) const
+    {
+#ifdef DEBUG
+      if (row < 0 || row >= 8)
+        throw std::out_of_range("row out of bounds");
+      if (col < 0 || col >= 8)
+        throw std::out_of_range("col out of bounds");
+#endif
+      return board[(row << 3) + col];
+    }
+
+#pragma region gameplay
+
+    static const std::string initialFenString;
+    Board() : Board(initialFenString) {}
 
     const std::vector<Move> getLegalPawnMoves(Piece::Color color, unsigned char square) const;
     const std::vector<Move> getLegalRookMoves(Piece::Color color, unsigned char square) const;
@@ -616,46 +513,14 @@ namespace Chess
     /// technically a helper for making moves in search
     /// @param move move generated by getLegalMoves
     void makeMove(const Move &move);
+
     /// @brief attempt to make a move on the board, checking legality
     /// @param startSquare
     /// @param endSquare
     /// @return whether or not the move could be successfully made
     bool makeMove(uint8_t startSquare, uint8_t endSquare);
+
     /// @brief unmake the previous move
     void unmakeMove();
-
-    /// @brief return a snapshot of the current state
-    /// @return snapshot of current state
-    const State &getCurrentState() const
-    {
-      return state.getCurrentState();
-    }
-    bool canWhiteCastleKingside() const
-    {
-      return state.getCurrentState().canWhiteCastleKingside();
-    }
-    bool canBlackCastleKingside() const
-    {
-      return state.getCurrentState().canBlackCastleKingside();
-    }
-    bool canWhiteCastleQueenside() const
-    {
-      return state.getCurrentState().canWhiteCastleQueenside();
-    }
-    bool canBlackCastleQueenside() const
-    {
-      return state.getCurrentState().canBlackCastleQueenside();
-    }
-
-    /// @brief Get the FEN string of the current position
-    /// @return FEN string of current position
-    std::string getFenString() const;
-
-    /// @brief get a vector containing all previous moves made
-    /// @return vector containing all previous moves made
-    const std::vector<Move> getMoveHistory() const
-    {
-      return state.getMoveHistory();
-    }
   };
 }
