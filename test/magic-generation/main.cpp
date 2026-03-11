@@ -14,23 +14,26 @@ s - saves to a file (comma separated values, newline separated lists)
 #include <iostream>
 #include <bitset>
 #include "bitboards.hpp"
+#include "search.hpp"
 
-int main(int argc, char **)
+int main(int, char **)
 {
-  // pre-create all bitboards
-  const uint64_t &mask = diagOccupancyMasks[0];
-  for (auto &set : diagOccupancySets[0])
-  {
-    const uint64_t &occupancy = set.first;
-    const uint64_t &moveset = set.second;
-    for (int row{0}; row < 8; row++)
-    {
-      std::cout
-          << std::bitset<8>((mask >> (row * 8)) & 0xFF) << " "
-          << std::bitset<8>((occupancy >> (row * 8)) & 0xFF) << "   "
-          << std::bitset<8>((moveset >> (row * 8)) & 0xFF) << std::endl;
-    }
-    if (&mask != &diagOccupancyMasks.back())
-      std::cout << "------------\n";
-  }
+  std::vector<std::unique_ptr<MagicSearch>> magicSearches{};
+  std::vector<std::thread> allThreads{};
+
+  // // orthogonal magics
+  // for (int i{0}; i < 64; i++)
+  // {
+  //   magicSearches.emplace_back(orthMagicSignals[i], orthOccupancyMasks[i]);
+  // }
+  // // diagonal magics
+  // for (int)
+
+  magicSearches.push_back(std::make_unique<MagicSearch>(orthOccupancySets[0], std::popcount(orthOccupancyMasks[0])));
+
+  std::this_thread::sleep_for(std::chrono::seconds(3));
+  magicSearches.back()->stop();
+  std::cout << magicSearches.back()->bestMagic
+            << " " << static_cast<int>(magicSearches.back()->bestShift)
+            << std::endl;
 }
