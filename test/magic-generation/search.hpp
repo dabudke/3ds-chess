@@ -8,13 +8,14 @@ class MagicSearch
   void entrypoint();
   const std::vector<std::pair<uint64_t, uint64_t>> &occupancySets;
   std::atomic_bool shouldStop{false};
-  const uint64_t initialShift;
 
 public:
+  const int bestPossibleShift;
   std::atomic_bool newMagicFound{false};
-  std::mutex valueLock;
-  uint8_t bestShift{0};
+  std::mutex valueMutex;
+  int bestShift{0};
   uint64_t bestMagic{0};
+  uint64_t bestMaxIndex{0};
   std::map<uint64_t, uint64_t> bestMoveMap{};
 
   void stop()
@@ -24,7 +25,7 @@ public:
       thisThread.join();
   }
 
-  MagicSearch(const std::vector<std::pair<uint64_t, uint64_t>> &occupancySets, uint64_t initialShift) : initialShift(initialShift), occupancySets{occupancySets}, thisThread(&MagicSearch::entrypoint, this) {}
+  MagicSearch(const std::vector<std::pair<uint64_t, uint64_t>> &occupancySets, int initialShift) : bestPossibleShift(initialShift), occupancySets{occupancySets}, thisThread(&MagicSearch::entrypoint, this) {}
   ~MagicSearch()
   {
     stop();
