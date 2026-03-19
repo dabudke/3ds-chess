@@ -25,32 +25,34 @@ struct MagicMapEntry
   int shift{0};
   uint64_t magic{0};
   bool perfect{false};
-  int maxIndex{0};
+  int collisions{0};
+  std::map<uint64_t, uint64_t> moveMap{};
 };
 int main(int, char **)
 {
   std::setfill("0");
   std::vector<std::pair<std::shared_ptr<MagicSearch>, std::shared_ptr<MagicSearch>>> magicSearches{};
   std::array<std::pair<MagicMapEntry, MagicMapEntry>, 64> magicMap{};
-  unsigned long orthSize{0};
-  unsigned long diagSize{0};
+  size_t orthBaselineLength{0};
+  size_t diagBaselineLength{0};
 
   // orthogonal magics
+  for (int i{0}; i < 64; i++)
   {
-    std::ifstream previousOutput("magic-output.csv");
-    for (int i{0}; i < 64; i++)
-    {
-      auto orthSearch = std::make_shared<MagicSearch>(orthOccupancySets[i], 64 - std::popcount(orthOccupancyMasks[i]));
-      orthSize += 1ul << std::popcount(orthOccupancyMasks[i]);
-      auto diagSearch = std::make_shared<MagicSearch>(diagOccupancySets[i], 64 - std::popcount(diagOccupancyMasks[i]));
-      diagSize += 1ul << std::popcount(diagOccupancyMasks[i]);
-      magicSearches.emplace_back(orthSearch, diagSearch);
-    }
+    int orthPossibilityBits = std::popcount(orthOccupancyMasks[i]);
+    auto orthSearch = std::make_shared<MagicSearch>(orthOccupancySets[i], 64 - orthPossibilityBits);
+    orthBaselineLength += (1ul << orthPossibilityBits);
+
+    int diagPossibilityBits = std::popcount(diagOccupancyMasks[i]);
+    auto diagSearch = std::make_shared<MagicSearch>(diagOccupancySets[i], 64 - diagPossibilityBits);
+    diagBaselineLength += (1ul << diagPossibilityBits);
+
+    magicSearches.emplace_back(orthSearch, diagSearch);
   }
 
   static const size_t baseSize = 612 + 64 + 256;
-  const unsigned long minOrthSize{orthSize + baseSize};
-  const unsigned long minDiagSize{diagSize + baseSize};
+  const size_t baselineOrthSize{orthBaselineLength * 8 + baseSize};
+  const size_t baselineDiagSize{diagBaselineLength * 8 + baseSize};
 
   int maxX, maxY;
   bool running{true};
@@ -69,38 +71,34 @@ int main(int, char **)
 
   refresh();
 
-  WINDOW *totalSizeBox = newwin(4, maxX - 54, 0, 0),
-         *recentMagicsBox = newwin(maxY - 4, maxX - 54, 4, 0),
-         *allMagicsBox = newwin(maxY, 54, 0, maxX - 54);
+  int halfSize = maxX / 2;
+  WINDOW *totalSizeBox = newwin(4, maxX, 0, 0),
+         *orthBox = newwin(maxY - 4, halfSize, 4, 0),
+         *diagBox = newwin(maxY - 4, halfSize, 4, halfSize + 1);
 
   WINDOW *totalSize = derwin(totalSizeBox, 2, maxX - 56, 1, 1),
-         *recentMagics = derwin(recentMagicsBox, maxY - 6, maxX - 56, 1, 1),
-         *allMagics = derwin(allMagicsBox, maxY - 2, 52, 1, 1);
+         *orthList = derwin(orthBox, maxY - 6, halfSize - 2, 1, 1),
+         *diagList = derwin(diagBox, maxY - 6, halfSize - 2, 1, 1);
 
-  if (!totalSizeBox || !recentMagicsBox || !allMagicsBox || !totalSize || !recentMagics || !allMagics)
+  if (!totalSizeBox || !orthBox || !diagBox || !totalSize || !orthList || !diagList)
   {
     endwin();
     throw std::runtime_error("window error");
   }
 
   box(totalSizeBox, 0, 0);
-  box(recentMagicsBox, 0, 0);
-  box(allMagicsBox, 0, 0);
+  box(orthBox, 0, 0);
+  box(diagBox, 0, 0);
 
-  mvwprintw(totalSizeBox, 0, 3, "Total Size");
-  mvwprintw(recentMagicsBox, 0, 3, "Recent Magics");
-  mvwprintw(allMagicsBox, 0, 3, "All Magics");
-
-  scrollok(recentMagics, true);
+  mvwprintw(totalSizeBox, 0, 2, " Total Size ");
+  mvwprintw(orthBox, 0, 2, " Orthogonal ");
+  mvwprintw(diagBox, 0, 2, " Diagonal ");
 
   wrefresh(totalSizeBox);
-  wrefresh(recentMagicsBox);
-  wrefresh(allMagicsBox);
+  wrefresh(orthBox);
+  wrefresh(diagBox);
 
   // setup all magics table
-  mvwprintw(allMagics, 0, 1, "sq | orthogonal            | diagonal");
-  mvwprintw(allMagics, 1, 1, "---+-----------------------+----------------------");
-  wrefresh(allMagics);
 
   bool update{true};
   while (running)
@@ -119,51 +117,40 @@ int main(int, char **)
       auto &[orth, diag] = magicSearches[i];
       if (orth->newMagicFound)
       {
-        std::lock_guard lock(orth->valueMutex);
-        magicMap[i].first.magic = orth->bestMagic;
-        magicMap[i].first.shift = orth->bestShift;
-        magicMap[i].first.maxIndex = orth->bestMaxIndex;
-        wprintw(recentMagics, "\north %02d: 0x%016llX << %02d", i, orth->bestMagic, orth->bestShift);
-        if (orth->bestShift >= orth->bestPossibleShift)
+        auto &orthMap = magicMap[i].first;
         {
-          magicMap[i].first.perfect = true;
-          wattron(recentMagics, COLOR_PAIR(1));
-          wprintw(recentMagics, " (PERFECT!)");
-          wattroff(recentMagics, COLOR_PAIR(1));
+          std::lock_guard lock(orth->valueMutex);
+          orthMap.magic = orth->bestMagic;
+          orthMap.shift = orth->bestShift;
+          orthMap.collisions = orth->bestMapCollisions;
+          orthMap.moveMap = orth->bestMoveMap;
+          orth->newMagicFound = false;
         }
-        else if (orth->bestShift > orth->bestMagic)
-        {
-          magicMap[i].first.perfect = true;
-          wattron(recentMagics, COLOR_PAIR(2));
-          wprintw(recentMagics, " (BETTER THAN PERFECT!)");
-          wattroff(recentMagics, COLOR_PAIR(2));
-        }
-        orth->newMagicFound = false;
         update = true;
+
+        uint32_t maxIndex = orthMap.moveMap.rbegin()->first;
+        size_t arraySize = 8 + 1 + 8 + (maxIndex + 1) * 8;
+        mvwprintw(orthList, i, 1, "%2d 0x%016llX >> %02d (%d c, %lu m, %.02fkb)", i, orthMap.magic, orthMap.shift, orthMap.collisions, maxIndex, arraySize / 1000.0f);
+        wclrtoeol(orthList);
       }
+
       if (diag->newMagicFound)
       {
-        std::lock_guard lock(diag->valueMutex);
-        magicMap[i].second.magic = diag->bestMagic;
-        magicMap[i].second.shift = diag->bestShift;
-        magicMap[i].second.maxIndex = diag->bestMaxIndex;
-        wprintw(recentMagics, "\ndiag %02d: 0x%016llX << %02d", i, diag->bestMagic, diag->bestShift);
-        if (diag->bestShift == diag->bestPossibleShift)
+        auto &diagMap = magicMap[i].second;
         {
-          magicMap[i].second.perfect = true;
-          wattron(recentMagics, COLOR_PAIR(1));
-          wprintw(recentMagics, " (PERFECT!)");
-          wattroff(recentMagics, COLOR_PAIR(1));
+          std::lock_guard lock(diag->valueMutex);
+          diagMap.magic = diag->bestMagic;
+          diagMap.shift = diag->bestShift;
+          diagMap.collisions = diag->bestMapCollisions;
+          diagMap.moveMap = diag->bestMoveMap;
+          diag->newMagicFound = false;
         }
-        else if (diag->bestShift > diag->bestMagic)
-        {
-          magicMap[i].second.perfect = true;
-          wattron(recentMagics, COLOR_PAIR(2));
-          wprintw(recentMagics, " (BETTER THAN PERFECT!)");
-          wattroff(recentMagics, COLOR_PAIR(2));
-        }
-        diag->newMagicFound = false;
         update = true;
+
+        uint32_t maxIndex = diagMap.moveMap.rbegin()->first;
+        size_t arraySize = 8 + 1 + 8 + (maxIndex + 1) * 8;
+        mvwprintw(diagList, i, 1, "%2d 0x%016llX >> %02d (%d c, %lu m, %.02fkb)", i, diagMap.magic, diagMap.shift, diagMap.collisions, maxIndex, arraySize / 1000.0f);
+        wclrtoeol(diagList);
       }
     }
 
@@ -172,54 +159,41 @@ int main(int, char **)
     {
 
       // draw all orthogonal and diagonal magics
-      size_t orthSize{baseSize};
-      size_t diagSize{baseSize};
-      for (int i{0}; i < 64; i++)
+      size_t orthSize{0};
+      size_t diagSize{0};
+      for (auto &[orth, diag] : magicMap)
       {
-        auto &[orth, diag] = magicMap[i];
-        mvwprintw(allMagics, i + 2, 0, " %2hhu | ", i);
-        if (orth.perfect)
-          wattron(allMagics, COLOR_PAIR(1));
-        wprintw(allMagics, "0x%016llX %2i", orth.magic, orth.shift);
-        if (orth.perfect)
-          wattroff(allMagics, COLOR_PAIR(1));
-        orthSize += (orth.maxIndex + 1) * 8;
-        wprintw(allMagics, " | ");
-
-        if (diag.perfect)
-          wattron(allMagics, COLOR_PAIR(1));
-        wprintw(allMagics, "0x%016llX %2i", diag.magic, diag.shift);
-        if (diag.perfect)
-          wattroff(allMagics, COLOR_PAIR(1));
-        diagSize += diag.maxIndex + 1;
+        orthSize += (orth.moveMap.rbegin()->first + 1);
+        diagSize += (diag.moveMap.rbegin()->first + 1);
       }
+      orthSize *= 8;
+      orthSize += baseSize;
+      diagSize *= 8;
+      diagSize += baseSize;
 
       // calculate total sizes, best sizes
-      wclear(totalSize);
       mvwprintw(totalSize, 0, 1, "Orthogonal: ");
-      if (minOrthSize >= orthSize)
+      if (baselineOrthSize >= orthSize)
         wattron(totalSize, COLOR_PAIR(1));
       wattron(totalSize, A_BOLD);
-      wprintw(totalSize, "%.3f", orthSize / 1000.0f);
+      wprintw(totalSize, "%.3f KB", orthSize / 1000.0f);
       wattroff(totalSize, COLOR_PAIR(1) | A_BOLD);
-      wprintw(totalSize, "/%.3f KB", minOrthSize / 1000.0f);
+      wprintw(totalSize, "/%.3f KB", baselineOrthSize / 1000.0f);
+      wclrtoeol(totalSize);
 
       mvwprintw(totalSize, 1, 1, "Diagonal: ");
-      if (minDiagSize >= diagSize)
+      if (baselineDiagSize >= diagSize)
         wattron(totalSize, COLOR_PAIR(1));
       wattron(totalSize, A_BOLD);
-      wprintw(totalSize, "%.3f", diagSize / 1000.0f);
+      wprintw(totalSize, "%.3f KB", diagSize / 1000.0f);
       wattroff(totalSize, COLOR_PAIR(1) | A_BOLD);
-      wprintw(totalSize, "/%.3f KB", minDiagSize / 1000.0f);
+      wprintw(totalSize, "/%.3f KB", baselineDiagSize / 1000.0f);
+      wclrtoeol(totalSize);
 
-      touchwin(recentMagicsBox);
-      touchwin(totalSizeBox);
-      touchwin(allMagicsBox);
-      wrefresh(recentMagics);
       wrefresh(totalSize);
-      wrefresh(allMagics);
+      wrefresh(orthList);
+      wrefresh(diagList);
 
-      refresh();
       update = false;
     }
   }
@@ -229,16 +203,27 @@ int main(int, char **)
   for (auto &[orth, diag] : magicSearches)
   {
     orth->stop();
-    std::cout << "0x" << std::hex << orth->bestMagic << " " << std::dec << orth->bestShift << " " << orth->bestMaxIndex << std::endl;
+    std::cout << "0x" << std::hex << orth->bestMagic << " " << std::dec << orth->bestShift << std::endl;
     diag->stop();
-    std::cout << "0x" << std::hex << diag->bestMagic << " " << std::dec << diag->bestShift << " " << diag->bestMaxIndex << std::endl;
+    std::cout << "0x" << std::hex << diag->bestMagic << " " << std::dec << diag->bestShift << std::endl;
   }
 
-  // std::remove("magic-output.csv");
-  // std::ofstream output("magic-output.csv");
+  // save last bits of information
+  // for (int i{0}; i < 64; i++)
+  // {
+  //   auto &[orth, diag] = magicSearches[i];
+  //   auto &[orthMap, diagMap] = magicMap[i];
 
-  std::array<std::map<uint8_t, uint64_t>, 64> orthMagicMap;
-  std::array<std::map<uint8_t, uint64_t>, 64> diagMagicMap;
+  //   orth->stop();
+  //   orthMap.magic = orth->bestMagic;
+  //   orthMap.shift = orth->bestShift;
+  //   orthMap.moveMap = orth->bestMoveMap;
+
+  //   diag->stop();
+  //   diagMap.magic = diag->bestMagic;
+  //   diagMap.shift = diag->bestShift;
+  //   diagMap.moveMap = diag->bestMoveMap;
+  // }
 
   for (int i{0}; i < 64; i++)
   {
@@ -247,21 +232,46 @@ int main(int, char **)
     std::string orthOutputPath = std::format("magics/magic-o{}.txt", i);
     std::remove(orthOutputPath.c_str());
     std::ofstream orthOutput(orthOutputPath);
-    orthOutput << "magic: " << orth->bestMagic << "\nshift: " << orth->bestShift << "\nbest shift: " << orth->bestPossibleShift << "\ntheoretical max index: " << (1ull << (64 - orth->bestPossibleShift)) << "\n";
-    for (auto &[index, moveset] : orth->bestMoveMap)
+    orthOutput << orth->bestMagic << ";" << orth->bestShift << ";{";
+    unsigned int maxIndex = orth->bestMoveMap.rbegin()->first;
+    for (int i{0}; i < maxIndex; i++)
     {
-      orthOutput << index << ";" << moveset << "\n";
+      if (orth->bestMoveMap.contains(i))
+      {
+        orthOutput << orth->bestMoveMap[i];
+      }
+      else
+      {
+        orthOutput << "0";
+      }
+      if (i < maxIndex - 1)
+      {
+        orthOutput << ",";
+      }
     }
-    orthOutput << "\n";
+    orthOutput << "}\n";
 
     std::string diagOutputPath = std::format("magics/magic-d{}.txt", i);
     std::remove(diagOutputPath.c_str());
 
     std::ofstream diagOutput(diagOutputPath);
-    diagOutput << "magic: " << diag->bestMagic << "\nshift: " << diag->bestShift << "\nbest shift: " << diag->bestPossibleShift << "\ntheoretical max index: " << (1ull << (64 - diag->bestPossibleShift)) << "\n";
-    for (auto &[index, moveset] : diag->bestMoveMap)
+    diagOutput << diag->bestMagic << "," << diag->bestShift << ",{";
+    maxIndex = diag->bestMoveMap.rbegin()->first;
+    for (int i{0}; i < maxIndex; i++)
     {
-      diagOutput << index << ";" << moveset << "\n";
+      if (diag->bestMoveMap.contains(i))
+      {
+        diagOutput << diag->bestMoveMap[i];
+      }
+      else
+      {
+        diagOutput << "0";
+      }
+      if (i < maxIndex - 1)
+      {
+        diagOutput << ",";
+      }
     }
+    diagOutput << "}\n";
   }
 }

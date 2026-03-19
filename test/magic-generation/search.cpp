@@ -11,9 +11,8 @@ void MagicSearch::entrypoint()
     // generate random magic number
     uint64_t magic = (static_cast<uint64_t>(rand()) << 32) + rand();
 
-    // sizeof(std::array<uint64_t *, 64>);
-
-    bool failed{true};
+    bool succeeded{true};
+    int collisions{0};
     // start at initial shift value (minimum possible)
     // stop if
     //   search stopped
@@ -28,12 +27,11 @@ void MagicSearch::entrypoint()
     // std::cout << outputStream.str();
     // outputStream.clear();
 
-    for (int shift{bestPossibleShift}; !shouldStop && shift > bestShift && failed; shift--)
+    for (int shift{bestShift + 1}; !shouldStop && succeeded; shift++)
     {
+      collisions = 0;
       // start search for this shift
-      failed = false;
       std::map<uint64_t, uint64_t> moveMap{};
-      uint64_t maxIndex{0};
       // check if every occupancy gets a unique* index
       for (auto &occupancySet : occupancySets)
       {
@@ -41,20 +39,19 @@ void MagicSearch::entrypoint()
         index >>= shift;
 
         // if this index provides a bad moveset
-        if (moveMap.contains(index) && moveMap.at(index) != occupancySet.second)
+        if (moveMap.contains(index))
         {
-          // outputStream << "Shift " << std::dec << shift << " failed\n";
-          // std::cout << outputStream.str();
-          // outputStream.clear();
-          failed = true;
-          break;
+          if (moveMap.at(index) != occupancySet.second)
+          {
+            succeeded = false;
+            break;
+          }
+          collisions++;
         }
         moveMap[index] = occupancySet.second;
-        if (index > maxIndex)
-          maxIndex = index;
       }
       // if this set didn't fail!
-      if (!failed)
+      if (succeeded)
       {
         // outputStream << "Shift " << std::dec << shift << " succeeded!\n";
         // std::cout << outputStream.str();
@@ -63,10 +60,8 @@ void MagicSearch::entrypoint()
         bestMagic = magic;
         bestShift = shift;
         bestMoveMap = moveMap;
-        bestMaxIndex = maxIndex;
+        bestMapCollisions = collisions;
         newMagicFound = true;
-        if (shift == bestPossibleShift)
-          return;
       }
     } // shift for loop
   } // outer magic generation loop
