@@ -9,5 +9,4 @@ Makefile
 gfx
 romfs
 .vscode
-assets/*.png
 .DS_Store
