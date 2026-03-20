@@ -4,3 +4,6 @@
 [submodule "vendored/imgui"]
 	path = vendored/imgui
 	url = git@github.com:ocornut/imgui.git
+[submodule "vendored/SDL_image"]
+	path = vendored/SDL_image
+	url = git@github.com:libsdl-org/SDL_image.git
