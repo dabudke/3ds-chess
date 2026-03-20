@@ -101,6 +101,7 @@ SET(UCI_SOURCES
 set(MBBGEN_SOURCES
   "test/magic-generation/main.cpp"
   "test/magic-generation/bitboards.cpp"
+  "test/magic-generation/search.cpp"
 )
 
 add_subdirectory(vendored/SDL EXCLUDE_FROM_ALL)
@@ -115,6 +116,7 @@ target_link_libraries(debugger PRIVATE SDL3::SDL3 SDL3_image::SDL3_image)
 target_include_directories(debugger PRIVATE "vendored/imgui" "vendored/imgui/backends")
 
 add_executable(magic-generation ${MBBGEN_SOURCES})
+target_link_libraries(magic-generation PRIVATE ncurses)
 target_include_directories(magic-generation PRIVATE "test/magic-generation")
 
 endif()
