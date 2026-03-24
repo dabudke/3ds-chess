@@ -20,6 +20,8 @@ s - saves to a file (comma separated values, newline separated lists)
 #include <ncurses.h>
 #include <iomanip>
 #include <fstream>
+#include <memory>
+#include <format>
 
 std::atomic_bool terminate{false};
 
@@ -287,20 +289,26 @@ int main(int argc, char **argv)
     {
       auto &[orthMap, diagMap] = magicMap[i];
 
+      if (orthMap.moveMap.size() == 0)
+        mvwprintw(orthList, i, 1, "%2d 0x---------------- >> -- (not found)", i);
+      else
       {
         uint32_t maxIndex = orthMap.moveMap.rbegin()->first;
         size_t arraySize = 8 + 1 + 8 + (maxIndex + 1) * 8;
         mvwprintw(orthList, i, 1, "%2d 0x%016llX >> %02d (%d c, %lu m, %.02fkb)", i, orthMap.magic, orthMap.shift, orthMap.collisions, maxIndex, arraySize / 1000.0f);
-        wclrtoeol(orthList);
       }
 
+      if (diagMap.moveMap.size() == 0)
+        mvwprintw(diagList, i, 1, "%2d 0x---------------- >> -- (not found)", i);
+      else
       {
         uint32_t maxIndex = diagMap.moveMap.rbegin()->first;
         size_t arraySize = 8 + 1 + 8 + (maxIndex + 1) * 8;
         mvwprintw(diagList, i, 1, "%2d 0x%016llX >> %02d (%d c, %lu m, %.02fkb)", i, diagMap.magic, diagMap.shift, diagMap.collisions, maxIndex, arraySize / 1000.0f);
-        wclrtoeol(diagList);
       }
     }
+    wrefresh(orthList);
+    wrefresh(diagList);
 
     bool update{true};
     while (!terminate)
@@ -359,16 +367,23 @@ int main(int argc, char **argv)
         }
       }
 
-      // why is this not firing.
       if (update)
       {
+        int notFoundOrth{0};
+        int notFoundDiag{0};
         // draw all orthogonal and diagonal magics
         size_t orthSize{0};
         size_t diagSize{0};
         for (auto &[orth, diag] : magicMap)
         {
-          orthSize += (orth.moveMap.rbegin()->first + 1);
-          diagSize += (diag.moveMap.rbegin()->first + 1);
+          if (orth.moveMap.size() == 0)
+            notFoundOrth++;
+          else
+            orthSize += (orth.moveMap.rbegin()->first + 1);
+          if (diag.moveMap.size() == 0)
+            notFoundDiag++;
+          else
+            diagSize += (diag.moveMap.rbegin()->first + 1);
         }
         orthSize *= 8;
         orthSize += baseSize;
@@ -382,7 +397,7 @@ int main(int argc, char **argv)
         wattron(totalSize, A_BOLD);
         wprintw(totalSize, "%.3f KB", orthSize / 1000.0f);
         wattroff(totalSize, COLOR_PAIR(1) | A_BOLD);
-        wprintw(totalSize, "/%.3f KB", baselineOrthSize / 1000.0f);
+        wprintw(totalSize, "/%.3f KB (%d/64)", baselineOrthSize / 1000.0f, 64 - notFoundOrth);
         wclrtoeol(totalSize);
 
         mvwprintw(totalSize, 1, 1, "Diagonal: ");
@@ -391,7 +406,7 @@ int main(int argc, char **argv)
         wattron(totalSize, A_BOLD);
         wprintw(totalSize, "%.3f KB", diagSize / 1000.0f);
         wattroff(totalSize, COLOR_PAIR(1) | A_BOLD);
-        wprintw(totalSize, "/%.3f KB", baselineDiagSize / 1000.0f);
+        wprintw(totalSize, "/%.3f KB (%d/64)", baselineDiagSize / 1000.0f, 64 - notFoundDiag);
         wclrtoeol(totalSize);
 
         wrefresh(totalSize);
@@ -403,6 +418,7 @@ int main(int argc, char **argv)
     }
 
     endwin();
+    std::cout << "Stopping magic searches...\n";
 
     // save last bits of information
     for (int i{0}; i < 64; i++)
@@ -427,6 +443,7 @@ int main(int argc, char **argv)
       }
     }
 
+    std::cout << "Stopped, saving magics to file '" << outputFilename << "'...\n";
     saveToFile(outputFilename, magicMap);
   }
   else
@@ -476,6 +493,8 @@ int main(int argc, char **argv)
         newMagicFound = false;
       }
     }
+    std::cout << "Stopping magic searches...\n";
+
     for (int i{0}; i < 64; i++)
     {
       auto &[orth, diag] = magicSearches[i];
@@ -497,6 +516,7 @@ int main(int argc, char **argv)
         diagMap.moveMap = diag->bestMoveMap;
       }
     }
+    std::cout << "Stopped, saving magics to file '" << outputFilename << "'...\n";
     saveToFile(outputFilename, magicMap);
   }
 }

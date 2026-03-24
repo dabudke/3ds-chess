@@ -1,6 +1,10 @@
 #include <cinttypes>
+#include <vector>
 #include <thread>
 #include <map>
+#include <atomic>
+#include <mutex>
+#include <functional>
 
 class MagicSearch
 {
@@ -24,7 +28,10 @@ public:
       thisThread.join();
   }
 
-  MagicSearch(bool start, const std::vector<std::pair<uint64_t, uint64_t>> &occupancySets, uint64_t bestMagic, int bestShift) : shouldStop{!start}, occupancySets{occupancySets}, thisThread(&MagicSearch::entrypoint, this), bestMagic{bestMagic}, bestShift{bestShift} {}
+  MagicSearch(bool start, const std::vector<std::pair<uint64_t, uint64_t>> &occupancySets, uint64_t bestMagic, int bestShift) : shouldStop{!start}, occupancySets{occupancySets}, bestMagic{bestMagic}, bestShift{bestShift}
+  {
+    thisThread = std::thread(&MagicSearch::entrypoint, this);
+  }
   ~MagicSearch()
   {
     stop();

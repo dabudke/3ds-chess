@@ -27,7 +27,7 @@ void MagicSearch::entrypoint()
     // std::cout << outputStream.str();
     // outputStream.clear();
 
-    for (int shift{bestShift + 1}; !shouldStop && succeeded; shift++)
+    for (int shift{bestShift + 1}; !shouldStop && succeeded && shift < 64; shift++)
     {
       collisions = 0;
       // start search for this shift

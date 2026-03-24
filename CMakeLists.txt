@@ -119,4 +119,6 @@ add_executable(magic-generation ${MBBGEN_SOURCES})
 target_link_libraries(magic-generation PRIVATE ncurses)
 target_include_directories(magic-generation PRIVATE "test/magic-generation")
 
+add_compile_definitions(_GLIBCXX_DEBUG)
+
 endif()
