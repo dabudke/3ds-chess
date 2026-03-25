@@ -132,6 +132,7 @@ int main(int argc, char **argv)
       outputFilename = optarg;
     if (opt == 'l')
     {
+      std::cout << "Loading previous magic file '" << optarg << "'...\n";
       std::ifstream magicLoad(optarg);
 
       magicLoad.ignore(); // '{'
@@ -208,6 +209,7 @@ int main(int argc, char **argv)
         magicLoad.ignore(3); // '},\n'
       }
       magicLoad.ignore(2); // '\n{'
+      std::cout << "Loaded.\n";
     }
   }
 
@@ -234,6 +236,7 @@ int main(int argc, char **argv)
 
     magicSearches.emplace_back(orthSearch, diagSearch);
   }
+  std::cout << "Threads spawned.\n";
 
   static const size_t baseSize = 612 + 64 + 256;
   const size_t baselineOrthSize{orthBaselineLength * 8 + baseSize};
@@ -448,6 +451,7 @@ int main(int argc, char **argv)
   }
   else
   {
+    std::cout << std::unitbuf;
     std::signal(SIGTERM, signalHandler);
     std::signal(SIGINT, signalHandler);
     while (!terminate)
@@ -489,11 +493,11 @@ int main(int argc, char **argv)
             diagSize += (diag.moveMap.rbegin()->first + 1) * 8;
         }
 
-        std::cout << std::format("New magic found: orth {:.3f} KB, diag {:.3f} KB\n", orthSize / 1000.0f, diagSize / 1000.0f);
+        std::cout << std::format("New magic found: orth {:.3f} KB, diag {:.3f} KB", orthSize / 1000.0f, diagSize / 1000.0f) << std::endl;
         newMagicFound = false;
       }
     }
-    std::cout << "Stopping magic searches...\n";
+    std::cout << "Stopping magic searches..." << std::endl;
 
     for (int i{0}; i < 64; i++)
     {
@@ -516,7 +520,7 @@ int main(int argc, char **argv)
         diagMap.moveMap = diag->bestMoveMap;
       }
     }
-    std::cout << "Stopped, saving magics to file '" << outputFilename << "'...\n";
+    std::cout << "Stopped, saving magics to file '" << outputFilename << "'..." << std::endl;
     saveToFile(outputFilename, magicMap);
   }
 }
