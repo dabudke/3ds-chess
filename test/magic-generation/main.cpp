@@ -113,6 +113,7 @@ void saveToFile(const std::string &filename, std::array<std::pair<MagicMapEntry,
 
 int main(int argc, char **argv)
 {
+  std::cout << std::unitbuf;
   char opt;
   std::array<std::pair<MagicMapEntry, MagicMapEntry>, 64> magicMap{};
   bool doOrthogonal{false};
@@ -451,7 +452,6 @@ int main(int argc, char **argv)
   }
   else
   {
-    std::cout << std::unitbuf;
     std::signal(SIGTERM, signalHandler);
     std::signal(SIGINT, signalHandler);
     while (!terminate)
