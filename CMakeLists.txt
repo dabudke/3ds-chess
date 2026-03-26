@@ -72,7 +72,7 @@ else()
 
 # PC Debugging Builds (or UCI engine)
 
-add_compile_definitions(DEBUG)
+add_compile_definitions(DEBUG _GLIBCXX_DEBUG)
 
 set(IMGUI_SOURCES
   "vendored/imgui/backends/imgui_impl_sdlrenderer3.cpp"
@@ -119,9 +119,8 @@ add_executable(magic-generation ${MBBGEN_SOURCES})
 target_link_libraries(magic-generation PRIVATE ncurses)
 target_include_directories(magic-generation PRIVATE "test/magic-generation")
 
-add_compile_definitions(_GLIBCXX_DEBUG)
-
-add_executable(magic-conversion "test/magic-generation/convertSource.cpp")
+add_executable(magic-conversion "test/magic-generation/convertSource.cpp" "test/magic-generation/bitboards.cpp")
+target_include_directories(magic-conversion PRIVATE "test/magic-generation")
 
 add_custom_target(magics DEPENDS magic-conversion magic-generation)
 add_executable(magic-format-convert "test/magic-generation/convertFormat.cpp")
