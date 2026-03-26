@@ -423,7 +423,10 @@ int main(int argc, char **argv)
 
         std::cout << std::format("New magic found: orth {:.3f} KB, diag {:.3f} KB", orthSize / 1000.0f, diagSize / 1000.0f) << std::endl;
         newMagicFound = false;
+
+        saveToFile(outputFilename + ".tmp", magicMap);
       }
+      std::this_thread::yield();
     }
     std::cout << "Stopping magic searches..." << std::endl;
 
