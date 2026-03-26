@@ -14,6 +14,7 @@ set(CHESS_SOURCES
   "src/chess/board/moves.cpp"
   "src/chess/board/fen.cpp"
   "src/chess/board/state.cpp"
+  "src/chess/board/magicBitboards.cpp"
 )
 set(CHESS_ASSETS
   "assets/white pawn.png"

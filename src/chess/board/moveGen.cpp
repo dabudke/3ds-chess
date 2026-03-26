@@ -1,5 +1,6 @@
 #include "chess/board.hpp"
 #include <bit>
+#include "magicBitboards.hpp"
 
 namespace Chess
 {
@@ -30,14 +31,14 @@ namespace Chess
       if (forwardBit & promotionMask)
       {
         // promotions
-        moves.push_back(Move(square, forwardSquare, Move::Flag::RookPromotion));
-        moves.push_back(Move(square, forwardSquare, Move::Flag::KnightPromotion));
-        moves.push_back(Move(square, forwardSquare, Move::Flag::RookPromotion));
-        moves.push_back(Move(square, forwardSquare, Move::Flag::QueenPromotion));
+        moves.emplace_back(square, forwardSquare, Move::RookPromotion);
+        moves.emplace_back(square, forwardSquare, Move::KnightPromotion);
+        moves.emplace_back(square, forwardSquare, Move::RookPromotion);
+        moves.emplace_back(square, forwardSquare, Move::QueenPromotion);
       }
       else
       {
-        moves.push_back(Move(square, forwardSquare));
+        moves.emplace_back(square, forwardSquare);
 
         uint64_t startRankMask = bitmaskForRow(color == Piece::White ? 1 : 6);
         if (squareBit & startRankMask)
@@ -45,7 +46,7 @@ namespace Chess
           uint64_t doublePush = squareOffset(forwardSquare, forwardDir, 0);
           uint64_t doublePushBit = bitmaskForSquare(doublePush);
           if (doublePushBit & ~blockerBitboard)
-            moves.push_back(Move(square, doublePush, Move::Flag::PawnDoubleMove));
+            moves.emplace_back(square, doublePush, Move::Flag::PawnDoubleMove);
         }
       }
     }
@@ -70,18 +71,18 @@ namespace Chess
       uint8_t captureSquare = std::countr_zero(captureMask);
       if (captureWillPromote)
       {
-        moves.push_back(Move(square, captureSquare, Move::Flag::RookPromotionCapture));
-        moves.push_back(Move(square, captureSquare, Move::Flag::KnightPromotionCapture));
-        moves.push_back(Move(square, captureSquare, Move::Flag::BishopPromotionCapture));
-        moves.push_back(Move(square, captureSquare, Move::Flag::QueenPromotionCapture));
+        moves.emplace_back(square, captureSquare, Move::RookPromotionCapture);
+        moves.emplace_back(square, captureSquare, Move::KnightPromotionCapture);
+        moves.emplace_back(square, captureSquare, Move::BishopPromotionCapture);
+        moves.emplace_back(square, captureSquare, Move::QueenPromotionCapture);
       }
       else
-        moves.push_back(Move(square, captureSquare, Move::Flag::Capture));
+        moves.emplace_back(square, captureSquare, Move::Capture);
       captureMask ^= 1ULL << captureSquare;
     }
     if (attackMask & enPassantBit)
     {
-      moves.push_back(Move(square, std::countr_zero(enPassantBit), Move::Flag::EnPassantCapture));
+      moves.emplace_back(square, std::countr_zero(enPassantBit), Move::EnPassantCapture);
     }
 
     return moves;
@@ -102,7 +103,7 @@ namespace Chess
     while (movesBitboard)
     {
       uint8_t moveSquare = std::countr_zero(movesBitboard);
-      moves.push_back(Move(square, moveSquare));
+      moves.emplace_back(square, moveSquare);
       movesBitboard ^= 1ull << moveSquare;
     }
 
@@ -110,7 +111,7 @@ namespace Chess
     while (capturesBitboard)
     {
       uint8_t moveSquare = std::countr_zero(capturesBitboard);
-      moves.push_back(Move(square, moveSquare, Move::Flag::Capture));
+      moves.emplace_back(square, moveSquare, Move::Flag::Capture);
       capturesBitboard ^= 1ull << moveSquare;
     }
 
@@ -123,64 +124,31 @@ namespace Chess
   {
     std::vector<Move> moves;
 
-    Piece capturePiece;
-    // up-right
-    for (int i{1}; i < 8 && square % 8 + i < 8 && square / 8 + i < 8 && capturePiece == Piece::Empty; ++i)
+    const uint64_t *movesets = MagicBitboards::diagMovesets[square];
+    const uint64_t &occupancyMask = MagicBitboards::diagMasks[square];
+    const uint64_t &magic = MagicBitboards::diagMagics[square];
+    const uint8_t &shift = MagicBitboards::diagShifts[square];
+
+    const uint64_t occupancy = bitboards.getAllPiecesBitboard();
+    const uint64_t enemyBitboard = color == Piece::White ? bitboards.getBlackPiecesBitboard() : bitboards.getWhitePiecesBitboard();
+
+    const uint64_t &moveset = movesets[((occupancy & occupancyMask) * magic) >> shift];
+
+    uint64_t moveMoveset = moveset & ~occupancy;
+    while (moveMoveset)
     {
-      capturePiece = getPiece(square + 9 * i);
-      if (capturePiece == Piece::Empty)
-      {
-        moves.push_back(Move(square, square + 9 * i));
-      }
-      else if (capturePiece.color() != color)
-      {
-        moves.push_back(Move(square, square + 9 * i, Move::Flag::Capture));
-      }
+      // extract all move positions
+      uint8_t moveSquare = std::countr_zero(moveMoveset);
+      moves.emplace_back(square, moveSquare);
+      moveMoveset ^= 1ull << moveSquare;
     }
 
-    capturePiece = Piece::Empty;
-    // up-left
-    for (int i{1}; i < 8 && square % 8 - i >= 0 && square / 8 + i < 8 && capturePiece == Piece::Empty; ++i)
+    uint64_t captureMoveset = moveset & enemyBitboard;
+    while (captureMoveset)
     {
-      capturePiece = getPiece(square + 7 * i);
-      if (capturePiece == Piece::Empty)
-      {
-        moves.push_back(Move(square, square + 7 * i));
-      }
-      else if (capturePiece.color() != color)
-      {
-        moves.push_back(Move(square, square + 7 * i, Move::Flag::Capture));
-      }
-    }
-
-    capturePiece = Piece::Empty;
-    // down-right
-    for (int i{1}; i < 8 && square % 8 + i < 8 && square / 8 - i >= 0 && capturePiece == Piece::Empty; ++i)
-    {
-      capturePiece = getPiece(square - 7 * i);
-      if (capturePiece == Piece::Empty)
-      {
-        moves.push_back(Move(square, square - 7 * i));
-      }
-      else if (capturePiece.color() != color)
-      {
-        moves.push_back(Move(square, square - 7 * i, Move::Flag::Capture));
-      }
-    }
-
-    capturePiece = Piece::Empty;
-    // down-left
-    for (int i{1}; i < 8 && square % 8 - i >= 0 && square / 8 - i >= 0 && capturePiece == Piece::Empty; ++i)
-    {
-      capturePiece = getPiece(square - 9 * i);
-      if (capturePiece == Piece::Empty)
-      {
-        moves.push_back(Move(square, square - 9 * i));
-      }
-      else if (capturePiece.color() != color)
-      {
-        moves.push_back(Move(square, square - 9 * i, Move::Flag::Capture));
-      }
+      uint8_t captureSquare = std::countr_zero(captureMoveset);
+      moves.emplace_back(square, captureSquare, Move::Capture);
+      captureMoveset ^= 1ull << captureSquare;
     }
 
     return moves;
@@ -192,64 +160,30 @@ namespace Chess
   {
     std::vector<Move> moves;
 
-    Piece capturePiece;
-    // up
-    for (int i{1}; i < 8 && square / 8 + i < 8 && capturePiece == Piece::Empty; ++i)
+    const uint64_t *movesets = MagicBitboards::orthMovesets[square];
+    const uint64_t &occupancyMask = MagicBitboards::orthMasks[square];
+    const uint64_t &magic = MagicBitboards::orthMagics[square];
+    const uint8_t &shift = MagicBitboards::orthShifts[square];
+
+    const uint64_t occupancyBitboard = bitboards.getAllPiecesBitboard();
+    const uint64_t enemyBitboard = color == Piece::White ? bitboards.getBlackPiecesBitboard() : bitboards.getWhitePiecesBitboard();
+
+    const uint64_t &moveset = movesets[((occupancyBitboard & occupancyMask) * magic) >> shift];
+
+    uint64_t moveMoveset = moveset & ~occupancyBitboard;
+    while (moveMoveset)
     {
-      capturePiece = getPiece(square + 8 * i);
-      if (capturePiece == Piece::Empty)
-      {
-        moves.push_back(Move(square, square + 8 * i));
-      }
-      else if (capturePiece.color() != color)
-      {
-        moves.push_back(Move(square, square + 8 * i, Move::Flag::Capture));
-      }
+      uint8_t moveSquare = std::countr_zero(moveMoveset);
+      moves.emplace_back(square, moveSquare);
+      moveMoveset ^= 1ull << moveSquare;
     }
 
-    capturePiece = Piece::Empty;
-    // right
-    for (int i{1}; i < 8 && square % 8 + i < 8 && capturePiece == Piece::Empty; ++i)
+    uint64_t captureMoveset = moveset & enemyBitboard;
+    while (captureMoveset)
     {
-      capturePiece = getPiece(square + i);
-      if (capturePiece == Piece::Empty)
-      {
-        moves.push_back(Move(square, square + i));
-      }
-      else if (capturePiece.color() != color)
-      {
-        moves.push_back(Move(square, square + i, Move::Flag::Capture));
-      }
-    }
-
-    capturePiece = Piece::Empty;
-    // left
-    for (int i{1}; i < 8 && square % 8 - i >= 0 && capturePiece == Piece::Empty; ++i)
-    {
-      capturePiece = getPiece(square - i);
-      if (capturePiece == Piece::Empty)
-      {
-        moves.push_back(Move(square, square - i));
-      }
-      else if (capturePiece.color() != color)
-      {
-        moves.push_back(Move(square, square - i, Move::Flag::Capture));
-      }
-    }
-
-    capturePiece = Piece::Empty;
-    // down
-    for (int i{1}; i < 8 && square / 8 - i >= 0 && capturePiece == Piece::Empty; ++i)
-    {
-      capturePiece = getPiece(square - 8 * i);
-      if (capturePiece == Piece::Empty)
-      {
-        moves.push_back(Move(square, square - 8 * i));
-      }
-      else if (capturePiece.color() != color)
-      {
-        moves.push_back(Move(square, square - 8 * i, Move::Flag::Capture));
-      }
+      uint8_t captureSquare = std::countr_zero(captureMoveset);
+      moves.emplace_back(square, captureSquare, Move::Capture);
+      captureMoveset ^= 1ull << captureSquare;
     }
 
     return moves;
@@ -261,123 +195,35 @@ namespace Chess
   {
     std::vector<Move> moves;
 
-    Piece capturePiece;
-    // up-right
-    for (int i{1}; i < 8 && square % 8 + i < 8 && square / 8 + i < 8 && capturePiece == Piece::Empty; ++i)
+    const uint64_t *orthMovesets = MagicBitboards::orthMovesets[square];
+    const uint64_t &orthOccupancyMask = MagicBitboards::orthMasks[square];
+    const uint64_t &orthMagic = MagicBitboards::orthMagics[square];
+    const uint8_t &orthShift = MagicBitboards::orthShifts[square];
+
+    const uint64_t *diagMovesets = MagicBitboards::diagMovesets[square];
+    const uint64_t &diagOccupancyMask = MagicBitboards::diagMasks[square];
+    const uint64_t &diagMagic = MagicBitboards::diagMagics[square];
+    const uint8_t &diagShift = MagicBitboards::diagShifts[square];
+
+    const uint64_t occupancyBitboard = bitboards.getAllPiecesBitboard();
+    const uint64_t enemyBitboard = color == Piece::White ? bitboards.getBlackPiecesBitboard() : bitboards.getWhitePiecesBitboard();
+
+    const uint64_t moveset = orthMovesets[((occupancyBitboard & orthOccupancyMask) * orthMagic) >> orthShift] | diagMovesets[((occupancyBitboard & diagOccupancyMask) * diagMagic) >> diagShift];
+
+    uint64_t moveMoveset = moveset & ~occupancyBitboard;
+    while (moveMoveset)
     {
-      capturePiece = getPiece(square + 9 * i);
-      if (capturePiece == Piece::Empty)
-      {
-        moves.push_back(Move(square, square + 9 * i));
-      }
-      else if (capturePiece.color() != color)
-      {
-        moves.push_back(Move(square, square + 9 * i, Move::Flag::Capture));
-      }
+      uint8_t moveSquare = std::countr_zero(moveMoveset);
+      moves.emplace_back(square, moveSquare);
+      moveMoveset ^= 1ull << moveSquare;
     }
 
-    capturePiece = Piece::Empty;
-    // up-left
-    for (int i{1}; i < 8 && square % 8 - i >= 0 && square / 8 + i < 8 && capturePiece == Piece::Empty; ++i)
+    uint64_t captureMoveset = moveset & enemyBitboard;
+    while (captureMoveset)
     {
-      capturePiece = getPiece(square + 7 * i);
-      if (capturePiece == Piece::Empty)
-      {
-        moves.push_back(Move(square, square + 7 * i));
-      }
-      else if (capturePiece.color() != color)
-      {
-        moves.push_back(Move(square, square + 7 * i, Move::Flag::Capture));
-      }
-    }
-
-    capturePiece = Piece::Empty;
-    // down-right
-    for (int i{1}; i < 8 && square % 8 + i < 8 && square / 8 - i >= 0 && capturePiece == Piece::Empty; ++i)
-    {
-      capturePiece = getPiece(square - 7 * i);
-      if (capturePiece == Piece::Empty)
-      {
-        moves.push_back(Move(square, square - 7 * i));
-      }
-      else if (capturePiece.color() != color)
-      {
-        moves.push_back(Move(square, square - 7 * i, Move::Flag::Capture));
-      }
-    }
-
-    capturePiece = Piece::Empty;
-    // down-left
-    for (int i{1}; i < 8 && square % 8 - i >= 0 && square / 8 - i >= 0 && capturePiece == Piece::Empty; ++i)
-    {
-      capturePiece = getPiece(square - 9 * i);
-      if (capturePiece == Piece::Empty)
-      {
-        moves.push_back(Move(square, square - 9 * i));
-      }
-      else if (capturePiece.color() != color)
-      {
-        moves.push_back(Move(square, square - 9 * i, Move::Flag::Capture));
-      }
-    }
-
-    // up
-    for (int i{1}; i < 8 && square / 8 + i < 8 && capturePiece == Piece::Empty; ++i)
-    {
-      capturePiece = getPiece(square + 8 * i);
-      if (capturePiece == Piece::Empty)
-      {
-        moves.push_back(Move(square, square + 8 * i));
-      }
-      else if (capturePiece.color() != color)
-      {
-        moves.push_back(Move(square, square + 8 * i, Move::Flag::Capture));
-      }
-    }
-
-    capturePiece = Piece::Empty;
-    // right
-    for (int i{1}; i < 8 && square % 8 + i < 8 && capturePiece == Piece::Empty; ++i)
-    {
-      capturePiece = getPiece(square + i);
-      if (capturePiece == Piece::Empty)
-      {
-        moves.push_back(Move(square, square + i));
-      }
-      else if (capturePiece.color() != color)
-      {
-        moves.push_back(Move(square, square + i, Move::Flag::Capture));
-      }
-    }
-
-    capturePiece = Piece::Empty;
-    // left
-    for (int i{1}; i < 8 && square % 8 - i >= 0 && capturePiece == Piece::Empty; ++i)
-    {
-      capturePiece = getPiece(square - i);
-      if (capturePiece == Piece::Empty)
-      {
-        moves.push_back(Move(square, square - i));
-      }
-      else if (capturePiece.color() != color)
-      {
-        moves.push_back(Move(square, square - i, Move::Flag::Capture));
-      }
-    }
-
-    capturePiece = Piece::Empty;
-    // down
-    for (int i{1}; i < 8 && square / 8 - i >= 0 && capturePiece == Piece::Empty; ++i)
-    {
-      capturePiece = getPiece(square - 8 * i);
-      if (capturePiece == Piece::Empty)
-      {
-        moves.push_back(Move(square, square - 8 * i));
-      }
-      else if (capturePiece.color() != color)
-      {
-        moves.push_back(Move(square, square - 8 * i, Move::Flag::Capture));
-      }
+      uint8_t captureSquare = std::countr_zero(captureMoveset);
+      moves.emplace_back(square, captureSquare, Move::Capture);
+      captureMoveset ^= 1ull << captureSquare;
     }
 
     return moves;
@@ -401,7 +247,7 @@ namespace Chess
           unsigned char moveSquare{squareOffset(square, dRow, dCol)};
           Piece piece = getPiece(moveSquare);
           if (piece == Piece::Empty || !getPiece(moveSquare).isColor(piece.color()))
-            moves.push_back(Move(square, squareOffset(square, dRow, dCol)));
+            moves.emplace_back(square, squareOffset(square, dRow, dCol));
         }
       }
     }
@@ -411,14 +257,14 @@ namespace Chess
     {
       if (getPiece(squareOffset(square, 0, 1)) == Piece::Empty && getPiece(squareOffset(square, 0, 2)) == Piece::Empty)
       {
-        moves.push_back(Move(square, squareOffset(square, 0, 3), Move::Flag::CastleKingside));
+        moves.emplace_back(square, squareOffset(square, 0, 3), Move::Flag::CastleKingside);
       }
     }
     if (whiteMove() ? currentState.canWhiteCastleQueenside() : currentState.canBlackCastleQueenside())
     {
       if (getPiece(squareOffset(square, 0, -1)) == Piece::Empty && getPiece(squareOffset(square, 0, -2)) == Piece::Empty && getPiece(squareOffset(square, 0, -3)) == Piece::Empty)
       {
-        moves.push_back(Move(square, squareOffset(square, 0, -4), Move::Flag::CastleQueenside));
+        moves.emplace_back(square, squareOffset(square, 0, -4), Move::Flag::CastleQueenside);
       }
     }
 
