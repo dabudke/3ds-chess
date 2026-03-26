@@ -111,15 +111,15 @@ int main(int argc, char **argv)
   }
 
   // new format! easy to read AND write
-  // orthMagic,orthShift,orthMoveset,orthMoveset....
-  // magic,shift,moveset...
+  // orthMagic orthShift orthMoveset orthMoveset....
+  // magic shift moveset...
   // ... (x 64)
-  // diagMagic,diagShift,diagMoveset...
+  // diagMagic diagShift diagMoveset...
   // ... (x 64)
   for (int i{0}; i < 64; i++)
   {
     auto &[orth, diag] = magicMap[i];
-    output << orth.magic << "," << orth.shift << ",";
+    output << orth.magic << " " << orth.shift << " ";
     uint32_t maxOrthIndex = orth.moveMap.rbegin()->first;
     for (uint32_t j{0}; j <= maxOrthIndex; j++)
     {
@@ -128,10 +128,10 @@ int main(int argc, char **argv)
       else
         output << "0";
       if (j < maxOrthIndex)
-        output << ",";
+        output << " ";
     }
-    output << "\n"
-           << diag.magic << "," << diag.shift << ",";
+    output << ",\n"
+           << diag.magic << " " << diag.shift << " ";
     uint32_t maxDiagIndex = diag.moveMap.rbegin()->first;
     for (uint32_t j{0}; j <= maxDiagIndex; j++)
     {
@@ -140,8 +140,8 @@ int main(int argc, char **argv)
       else
         output << "0";
       if (j < maxDiagIndex)
-        output << ",";
+        output << " ";
     }
-    output << "\n";
+    output << ",\n";
   }
 }

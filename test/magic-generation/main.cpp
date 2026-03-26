@@ -42,73 +42,35 @@ struct MagicMapEntry
 void saveToFile(const std::string &filename, std::array<std::pair<MagicMapEntry, MagicMapEntry>, 64> &magicMap)
 {
   std::remove(filename.c_str());
-  std::stringstream orthMagics{};
-  std::stringstream orthShifts{};
-  std::stringstream orthMap{};
-  std::stringstream diagMagics{};
-  std::stringstream diagShifts{};
-  std::stringstream diagMap{};
-
+  std::ofstream output(filename.c_str());
   for (int i{0}; i < 64; i++)
   {
     auto &[orth, diag] = magicMap[i];
-
-    orthMagics << orth.magic << "ull";
-    orthShifts << orth.shift << "u";
-    orthMap << "{";
-    unsigned int maxIndex = orth.moveMap.rbegin()->first;
-    for (int i{0}; i <= maxIndex; i++)
+    output << orth.magic << " " << orth.shift << " ";
+    uint32_t maxOrthIndex = orth.moveMap.rbegin()->first;
+    for (uint32_t j{0}; j <= maxOrthIndex; j++)
     {
-      if (orth.moveMap.contains(i))
-      {
-        orthMap << orth.moveMap[i] << "ull";
-      }
+      if (orth.moveMap.contains(j))
+        output << orth.moveMap[j];
       else
-      {
-        orthMap << "0ull";
-      }
-      if (i < maxIndex)
-      {
-        orthMap << ",";
-      }
+        output << "0";
+      if (j < maxOrthIndex)
+        output << " ";
     }
-    orthMap << "}";
-
-    diagMagics << diag.magic << "ull";
-    diagShifts << diag.shift << "u";
-    diagMap << "{";
-    maxIndex = diag.moveMap.rbegin()->first;
-    for (int i{0}; i <= maxIndex; i++)
+    output << ",\n"
+           << diag.magic << " " << diag.shift << " ";
+    uint32_t maxDiagIndex = diag.moveMap.rbegin()->first;
+    for (uint32_t j{0}; j <= maxDiagIndex; j++)
     {
-      if (diag.moveMap.contains(i))
-      {
-        diagMap << diag.moveMap[i] << "ull";
-      }
+      if (diag.moveMap.contains(j))
+        output << diag.moveMap[j];
       else
-      {
-        diagMap << "0ull";
-      }
-      if (i < maxIndex)
-      {
-        diagMap << ",";
-      }
+        output << "0";
+      if (j < maxDiagIndex)
+        output << " ";
     }
-    diagMap << "}";
-
-    if (i != 63)
-    {
-      orthMagics << ",";
-      orthShifts << ",";
-      orthMap << ",\n";
-      diagMagics << ",";
-      diagShifts << ",";
-      diagMap << ",\n";
-    }
+    output << ",\n";
   }
-
-  std::ofstream magicOutput(filename.c_str());
-  magicOutput << "{" << orthMagics.str() << "}\n{" << orthShifts.str() << "}\n{" << orthMap.str() << "}\n\n{"
-              << diagMagics.str() << "}\n{" << diagShifts.str() << "}\n{" << diagMap.str() << "}\n";
 }
 
 int main(int argc, char **argv)
@@ -136,80 +98,46 @@ int main(int argc, char **argv)
       std::cout << "Loading previous magic file '" << optarg << "'...\n";
       std::ifstream magicLoad(optarg);
 
-      magicLoad.ignore(); // '{'
+      uint64_t bitboard;
       for (int i{0}; i < 64; i++)
       {
-        uint64_t magic{0};
-        magicLoad >> magic;
-        magicMap[i].first.magic = magic;
-        magicLoad.ignore(4); // 'ull,' / 'ull}'
-      }
-      magicLoad.ignore(2); // '\n{'
-      for (int i{0}; i < 64; i++)
-      {
-        unsigned int shift{0};
-        magicLoad >> shift;
-        magicMap[i].first.shift = shift;
-        magicLoad.ignore(2); // 'u,' / 'u}'
-      }
-      magicLoad.ignore(2); // '\n{'
-      for (int i{0}; i < 64; i++)
-      {
-        uint64_t index{0};
-        std::map<uint64_t, uint64_t> map{};
-        while (!magicLoad.eof() && magicLoad.peek() != '}')
+        auto &[orth, diag] = magicMap[i];
+        if (magicLoad.eof())
         {
-          magicLoad.ignore(1); // '{' / ','
-          uint64_t bitboard{0};
-          magicLoad >> bitboard;
-          if (bitboard > 0ull)
-          {
-            map[index] = bitboard;
-          }
-          magicLoad.ignore(3); // 'ull'
-          index++;
+          std::cout << "Malformed magic file\n";
+          return -1;
         }
-        magicMap[i].first.moveMap = map;
-        magicLoad.ignore(3); // '},\n'
-      }
-      magicLoad.ignore(2); // '\n{'
 
-      for (int i{0}; i < 64; i++)
-      {
-        uint64_t magic{0};
-        magicLoad >> magic;
-        magicMap[i].second.magic = magic;
-        magicLoad.ignore(4); // 'ull,' / 'ull}'
-      }
-      magicLoad.ignore(2); // '\n{'
-      for (int i{0}; i < 64; i++)
-      {
-        unsigned int shift{0};
-        magicLoad >> shift;
-        magicMap[i].second.shift = shift;
-        magicLoad.ignore(2); // 'u,' / 'u}'
-      }
-      magicLoad.ignore(2); // '\n{'
-      for (int i{0}; i < 64; i++)
-      {
-        uint64_t index{0};
-        std::map<uint64_t, uint64_t> map{};
-        while (!magicLoad.eof() && magicLoad.peek() != '}')
+        magicLoad >> orth.magic;
+        magicLoad >> orth.shift;
+        uint32_t orthIndex{0};
+        while (magicLoad.peek() != ',')
         {
-          magicLoad.ignore(1); // '{' / ','
-          uint64_t bitboard{0};
           magicLoad >> bitboard;
           if (bitboard > 0ull)
-          {
-            map[index] = bitboard;
-          }
-          magicLoad.ignore(3); // 'ull'
-          index++;
+            orth.moveMap[orthIndex] = bitboard;
+          orthIndex++;
         }
-        magicMap[i].second.moveMap = map;
-        magicLoad.ignore(3); // '},\n'
+        magicLoad.ignore(2); // ignore ending comma and newline
+        if (magicLoad.eof())
+        {
+          std::cout << "Malformed magic file\n";
+          return -1;
+        }
+
+        magicLoad >> diag.magic;
+        magicLoad >> diag.shift;
+        uint32_t diagIndex{0};
+        while (magicLoad.peek() != ',')
+        {
+          magicLoad >> bitboard;
+          if (bitboard > 0ull)
+            diag.moveMap[diagIndex] = bitboard;
+          diagIndex++;
+        }
+        magicLoad.ignore(2);
       }
-      magicLoad.ignore(2); // '\n{'
+
       std::cout << "Loaded.\n";
     }
   }

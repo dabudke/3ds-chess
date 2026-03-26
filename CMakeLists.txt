@@ -121,7 +121,7 @@ target_include_directories(magic-generation PRIVATE "test/magic-generation")
 
 add_compile_definitions(_GLIBCXX_DEBUG)
 
-add_executable(magic-conversion "test/magic-generation/convert.cpp")
+add_executable(magic-conversion "test/magic-generation/convertSource.cpp")
 
 add_custom_target(magics DEPENDS magic-conversion magic-generation)
 add_executable(magic-format-convert "test/magic-generation/convertFormat.cpp")
