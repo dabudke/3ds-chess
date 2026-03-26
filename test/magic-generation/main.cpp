@@ -167,7 +167,7 @@ int main(int argc, char **argv)
   }
   std::cout << "Threads spawned.\n";
 
-  static const size_t baseSize = 612 + 64 + 256;
+  static const size_t baseSize = 8 * 64 + 64 + 4 * 64;
   const size_t baselineOrthSize{orthBaselineLength * 8 + baseSize};
   const size_t baselineDiagSize{diagBaselineLength * 8 + baseSize};
 
