@@ -103,9 +103,6 @@ set(MBBGEN_SOURCES
   "test/magic-generation/bitboards.cpp"
   "test/magic-generation/search.cpp"
 )
-set (MBCON_SOURCES
-  "test/magic-generation/convert.cpp"
-)
 
 add_subdirectory(vendored/SDL EXCLUDE_FROM_ALL)
 add_subdirectory(vendored/SDL_image EXCLUDE_FROM_ALL)
@@ -124,9 +121,9 @@ target_include_directories(magic-generation PRIVATE "test/magic-generation")
 
 add_compile_definitions(_GLIBCXX_DEBUG)
 
-add_executable(magic-conversion ${MBCON_SOURCES})
-target_include_directories(magic-conversion PRIVATE "test/magic-generation")
+add_executable(magic-conversion "test/magic-generation/convert.cpp")
 
 add_custom_target(magics DEPENDS magic-conversion magic-generation)
+add_executable(magic-format-convert "test/magic-generation/convertFormat.cpp")
 
 endif()
