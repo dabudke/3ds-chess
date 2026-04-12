@@ -1,8 +1,13 @@
 #pragma once
 
 #include <vector>
-#include "chess/board.hpp"
+
 #include <3ds.h>
+#include <3ds/services/hid.h>
+#include <3ds/types.h>
+
+#include "chess/board.hpp"
+#include "chess/move.hpp"
 
 // game state
 // - chess board
@@ -10,8 +15,7 @@
 
 // State used for the logic between the chess board and the render loop
 // NO GAME LOGIC WHATSOEVER
-class Game
-{
+class Game {
 protected:
   // render state variables
   // piece picked up
@@ -21,8 +25,7 @@ protected:
   unsigned char selectedSquare{noSelection};
   std::vector<Chess::Move> legalMovesForSelectedSquare;
   bool dragging{false};
-  struct DragPosition
-  {
+  struct DragPosition {
     u16 dx;
     u16 dy;
   } dragPosition{0, 0};
@@ -33,34 +36,23 @@ public:
   Game() : board() {}
   // TODO - import game state from PGN or FEN
 
-  bool makeMove(unsigned char fromSquare, unsigned char toSquare)
-  {
+  bool makeMove(unsigned char fromSquare, unsigned char toSquare) {
     selectedSquare = noSelection; // reset selected square
     legalMovesForSelectedSquare.clear();
     return board.makeMove(fromSquare, toSquare);
   }
-  bool makeMove(const Chess::Move &move)
-  {
+  bool makeMove(const Chess::Move &move) {
     selectedSquare = noSelection; // reset selected square
     legalMovesForSelectedSquare.clear();
     return board.makeMove(move.startSquare(), move.endSquare());
   };
 
   static const unsigned char noSelection = 65;
-  unsigned char getSelectedSquare() const
-  {
-    return selectedSquare;
-  }
+  unsigned char getSelectedSquare() const { return selectedSquare; }
   void setSelectedSquare(unsigned char square);
-  void setSelectedSquare(int row, int col)
-  {
-    setSelectedSquare(col + row * 8);
-  }
+  void setSelectedSquare(int row, int col) { setSelectedSquare(col + row * 8); }
 
-  const std::vector<Chess::Move> &getLegalMovesForSelectedSquare() const
-  {
-    return legalMovesForSelectedSquare;
-  }
+  const std::vector<Chess::Move> &getLegalMovesForSelectedSquare() const { return legalMovesForSelectedSquare; }
 
   void handleInput(u32 kDown, u32 kHeld, u32 kUp, touchPosition &touchPos);
   void render();

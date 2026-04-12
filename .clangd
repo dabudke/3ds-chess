@@ -1,0 +1,4 @@
+CompileFlags:
+  Remove: ["-mword-relocations"]
+Diagnostics:
+  MissingIncludes: Strict

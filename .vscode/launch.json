@@ -1,0 +1,42 @@
+{
+  "configurations": [
+    {
+      "type": "gdb",
+      "request": "attach",
+      "name": "Attach to gdbserver",
+      "executable": "${workspaceFolder}/3DS-Chess.elf",
+      "target": "${input:remoteIP}:${input:remotePort}",
+      "remote": true,
+      "cwd": "${workspaceRoot}",
+      "valuesFormatting": "parseText",
+      "gdbpath": "arm-none-eabi-gdb"
+    },
+    {
+      "name": "Wait For Debugger (macOS)",
+      "request": "attach",
+      "type": "lldb-dap",
+      "program": "${workspaceFolder}/build-macos/debugger",
+      "waitFor": true
+    },
+    {
+      "name": "Wait For Magic Generation (macOS)",
+      "request": "attach",
+      "type": "lldb-dap",
+      "program": "${workspaceFolder}/build-macos/magic-generation",
+      "waitFor": true
+    }
+  ],
+  "inputs": [
+    {
+      "id": "remoteIP",
+      "type": "promptString",
+      "description": "Specify the IP address of your 3DS"
+    },
+    {
+      "id": "remotePort",
+      "type": "promptString",
+      "description": "Specify the port of the GDB stub on your 3DS",
+      "default": "4003"
+    }
+  ]
+}

@@ -5,6 +5,7 @@ project(3DS-Chess)
 set(CMAKE_CXX_STANDARD 20)
 
 include_directories(src)
+set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 
 set(CHESS_SOURCES
   "src/chess/piece.cpp"

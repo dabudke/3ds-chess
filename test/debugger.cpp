@@ -1,17 +1,25 @@
 #include <iostream>
-#include "chess/board.hpp"
-#include "debugger/game.hpp"
+#include <string>
+
+#include "SDL3/SDL_blendmode.h"
+#include "SDL3/SDL_error.h"
+#include "SDL3/SDL_events.h"
+#include "SDL3/SDL_init.h"
+#include "SDL3/SDL_log.h"
+#include "SDL3/SDL_pixels.h"
+#include "SDL3/SDL_render.h"
+#include "SDL3/SDL_surface.h"
+#include "SDL3/SDL_timer.h"
+#include "SDL3/SDL_video.h"
+
+#include "imgui.h"
+#include "imgui_impl_sdl3.h"
+#include "imgui_impl_sdlrenderer3.h"
+
 #include "debugger/debug.hpp"
+#include "debugger/game.hpp"
 
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_main.h>
-#include <SDL3_image/SDL_image.h>
-#include <imgui.h>
-#include <imgui_impl_sdl3.h>
-#include <imgui_impl_sdlrenderer3.h>
-
-void draw(SDL_Renderer *renderer, Debugger::Game &game, Debugger::DebugEngine &debugger)
-{
+void draw(SDL_Renderer *renderer, Debugger::Game &game, Debugger::DebugEngine &debugger) {
   /* choose the color for the frame we will draw. The sine wave trick makes it fade between colors smoothly. */
   SDL_SetRenderDrawColor(renderer, 24, 25, 35, SDL_ALPHA_OPAQUE); /* new color, full alpha. */
 
@@ -34,21 +42,18 @@ void draw(SDL_Renderer *renderer, Debugger::Game &game, Debugger::DebugEngine &d
   SDL_Delay(16);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   SDL_SetAppMetadata("3DS Chess Engine Debugger", "1.0", "net.dabudke.3dschess.engineDebugger");
 
   SDL_Window *window;
   SDL_Renderer *renderer;
 
-  if (!SDL_Init(SDL_INIT_VIDEO))
-  {
+  if (!SDL_Init(SDL_INIT_VIDEO)) {
     SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
     return -1;
   }
 
-  if (!SDL_CreateWindowAndRenderer("Engine Debugger", 640, 480, SDL_WINDOW_RESIZABLE, &window, &renderer))
-  {
+  if (!SDL_CreateWindowAndRenderer("Engine Debugger", 640, 480, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
     SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
     SDL_Quit();
     return -1;
@@ -75,8 +80,7 @@ int main(int argc, char **argv)
 
   Debugger::Game game;
 
-  if (argc > 1)
-  {
+  if (argc > 1) {
     std::string fen = argv[1];
     std::cout << "Importing FEN: " << fen << std::endl;
     game = Debugger::Game(fen);
@@ -89,14 +93,11 @@ int main(int argc, char **argv)
   bool running = true;
   SDL_Event event;
 
-  while (running)
-  {
-    while (SDL_PollEvent(&event))
-    {
+  while (running) {
+    while (SDL_PollEvent(&event)) {
       ImGui_ImplSDL3_ProcessEvent(&event);
 
-      switch (event.type)
-      {
+      switch (event.type) {
       case SDL_EVENT_QUIT:
         running = false;
         break;

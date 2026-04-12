@@ -1,4 +1,6 @@
 #include <array>
+#include <cstdint>
+#include <utility>
 #include <vector>
 
 extern const std::array<uint64_t, 64> orthOccupancyMasks;

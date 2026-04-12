@@ -1,13 +1,12 @@
-#include <cinttypes>
-#include <vector>
-#include <thread>
-#include <map>
 #include <atomic>
+#include <cstdint>
+#include <map>
 #include <mutex>
-#include <functional>
+#include <thread>
+#include <utility>
+#include <vector>
 
-class MagicSearch
-{
+class MagicSearch {
   std::thread thisThread;
   void entrypoint();
   const std::vector<std::pair<uint64_t, uint64_t>> &occupancySets;
@@ -21,19 +20,16 @@ public:
   int bestMapCollisions{0};
   std::map<uint64_t, uint64_t> bestMoveMap{};
 
-  void stop()
-  {
+  void stop() {
     shouldStop = true;
     if (thisThread.joinable())
       thisThread.join();
   }
 
-  MagicSearch(bool start, const std::vector<std::pair<uint64_t, uint64_t>> &occupancySets, uint64_t bestMagic, int bestShift) : shouldStop{!start}, occupancySets{occupancySets}, bestMagic{bestMagic}, bestShift{bestShift}
-  {
+  MagicSearch(bool start, const std::vector<std::pair<uint64_t, uint64_t>> &occupancySets, uint64_t bestMagic,
+              int bestShift)
+      : shouldStop{!start}, occupancySets{occupancySets}, bestMagic{bestMagic}, bestShift{bestShift} {
     thisThread = std::thread(&MagicSearch::entrypoint, this);
   }
-  ~MagicSearch()
-  {
-    stop();
-  }
+  ~MagicSearch() { stop(); }
 };

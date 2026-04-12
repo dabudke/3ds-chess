@@ -1,0 +1,5 @@
+{
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "clangd.arguments": ["--query-driver=${env:DEVKITARM}/bin/arm-none-eabi-g++"],
+  "cmake.copyCompileCommands": "${workspaceFolder}/compile_commands.json"
+}

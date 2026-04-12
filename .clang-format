@@ -1,0 +1,23 @@
+BasedOnStyle: LLVM
+IndentWidth: 2
+---
+Language: Cpp
+ColumnLimit: 120
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^"SDL3.*'
+    Priority: 2
+  - Regex: '^"imgui.*'
+    Priority: 3
+
+  - Regex: "^<3ds.*"
+    Priority: 2
+  - Regex: "^<(c3d|citro3d).*"
+    Priority: 3
+  - Regex: "^<(c2d|citro2d).*"
+    Priority: 4
+
+  - Regex: "^<.*"
+    Priority: 1
+  - Regex: '^".*'
+    Priority: 5

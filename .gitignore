@@ -8,5 +8,6 @@ Makefile
 3DS-Chess.3dsx
 gfx
 romfs
-.vscode
 .DS_Store
+.cache
+compile_commands.json

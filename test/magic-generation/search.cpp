@@ -1,13 +1,13 @@
 #include "search.hpp"
-#include <map>
-#include <iostream>
-#include <iomanip>
 
-void MagicSearch::entrypoint()
-{
+#include <cstdint>
+#include <cstdlib>
+#include <map>
+#include <mutex>
+
+void MagicSearch::entrypoint() {
   // conduct a search for magic numbers
-  while (!shouldStop)
-  {
+  while (!shouldStop) {
     // generate random magic number
     uint64_t magic = (static_cast<uint64_t>(rand()) << 32) + rand();
 
@@ -27,22 +27,18 @@ void MagicSearch::entrypoint()
     // std::cout << outputStream.str();
     // outputStream.clear();
 
-    for (int shift{bestShift + 1}; !shouldStop && succeeded && shift < 64; shift++)
-    {
+    for (int shift{bestShift + 1}; !shouldStop && succeeded && shift < 64; shift++) {
       collisions = 0;
       // start search for this shift
       std::map<uint64_t, uint64_t> moveMap{};
       // check if every occupancy gets a unique* index
-      for (auto &occupancySet : occupancySets)
-      {
+      for (auto &occupancySet : occupancySets) {
         uint64_t index = occupancySet.first * magic;
         index >>= shift;
 
         // if this index provides a bad moveset
-        if (moveMap.contains(index))
-        {
-          if (moveMap.at(index) != occupancySet.second)
-          {
+        if (moveMap.contains(index)) {
+          if (moveMap.at(index) != occupancySet.second) {
             succeeded = false;
             break;
           }
@@ -51,8 +47,7 @@ void MagicSearch::entrypoint()
         moveMap[index] = occupancySet.second;
       }
       // if this set didn't fail!
-      if (succeeded)
-      {
+      if (succeeded) {
         // outputStream << "Shift " << std::dec << shift << " succeeded!\n";
         // std::cout << outputStream.str();
         // outputStream.clear();

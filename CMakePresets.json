@@ -1,0 +1,39 @@
+{
+  "version": 8,
+  "configurePresets": [
+    {
+      "name": "3ds",
+      "displayName": "3DS Build",
+      "description": "Sets devkitPro toolchain file and build directory",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TOOLCHAIN_FILE": "$env{DEVKITPRO}/cmake/3DS.cmake"
+      }
+    },
+    {
+      "name": "native",
+      "displayName": "Debugging",
+      "description": "Sets Ninja generator only",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-test"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "3ds",
+      "configurePreset": "3ds"
+    },
+    {
+      "name": "debugger",
+      "displayName": "Debugger",
+      "configurePreset": "native"
+    },
+    {
+      "name": "magicGeneration",
+      "displayName": "Magic Number Generation",
+      "configurePreset": "native"
+    }
+  ]
+}

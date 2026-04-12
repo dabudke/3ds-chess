@@ -1,14 +1,12 @@
 #pragma once
 #include "game.hpp"
 
-namespace Debugger
-{
-  class DebugEngine
-  {
-    Game *game;
+namespace Debugger {
+class DebugEngine {
+  Game *game;
 
-  public:
-    DebugEngine(Game *game) : game(game) {}
-    void draw();
-  };
-}
+public:
+  DebugEngine(Game *game) : game(game) {}
+  void draw();
+};
+} // namespace Debugger

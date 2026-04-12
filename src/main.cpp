@@ -1,21 +1,30 @@
-#include <3ds.h>
-#include <iostream>
 #include <cstdlib>
-#include <cstring>
+
+#include <3ds.h>
+#include <3ds/console.h>
+#include <3ds/gfx.h>
+#include <3ds/result.h>
+#include <3ds/romfs.h>
+#include <3ds/services/apt.h>
+#include <3ds/services/hid.h>
+#include <3ds/types.h>
+
+#include <c3d/base.h>
+#include <c3d/renderqueue.h>
 #include <citro3d.h>
+
+#include <c2d/base.h>
+#include <c2d/spritesheet.h>
 #include <citro2d.h>
 
-#include "game.hpp"
-#include "chess/board.hpp"
-#include "chess/move.hpp"
 #include "colors.hpp"
 #include "common.hpp"
+#include "game.hpp"
 
 C2D_SpriteSheet pieces;
 C2D_ImageTint transparentPieceTint{};
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   // initalize graphics
   gfxInitDefault();
   hidInit();
@@ -23,14 +32,12 @@ int main(int argc, char **argv)
 
   consoleInit(GFX_TOP, nullptr);
 
-  if (R_FAILED(C3D_Init(C3D_DEFAULT_CMDBUF_SIZE)))
-  {
+  if (R_FAILED(C3D_Init(C3D_DEFAULT_CMDBUF_SIZE))) {
     gfxExit();
     hidExit();
     return EXIT_FAILURE;
   }
-  if (R_FAILED(C2D_Init(C2D_DEFAULT_MAX_OBJECTS)))
-  {
+  if (R_FAILED(C2D_Init(C2D_DEFAULT_MAX_OBJECTS))) {
     C3D_Fini();
     gfxExit();
     hidExit();
@@ -46,12 +53,10 @@ int main(int argc, char **argv)
 
   C3D_RenderTarget *bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
 
-  while (aptMainLoop())
-  {
+  while (aptMainLoop()) {
     hidScanInput();
     u32 kDown = hidKeysDown();
-    if (kDown & KEY_START)
-    {
+    if (kDown & KEY_START) {
       break;
     }
     u32 kHeld = hidKeysHeld();
