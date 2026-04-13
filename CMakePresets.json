@@ -17,7 +17,10 @@
       "displayName": "Debugging",
       "description": "Sets Ninja generator only",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build-test"
+      "binaryDir": "${sourceDir}/build-test",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
     }
   ],
   "buildPresets": [

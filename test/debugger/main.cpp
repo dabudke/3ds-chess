@@ -20,7 +20,8 @@
 #include "debugger/game.hpp"
 
 void draw(SDL_Renderer *renderer, Debugger::Game &game, Debugger::DebugEngine &debugger) {
-  /* choose the color for the frame we will draw. The sine wave trick makes it fade between colors smoothly. */
+  /* choose the color for the frame we will draw. The sine wave trick makes it
+   * fade between colors smoothly. */
   SDL_SetRenderDrawColor(renderer, 24, 25, 35, SDL_ALPHA_OPAQUE); /* new color, full alpha. */
 
   /* clear the window to the draw color. */

@@ -89,7 +89,7 @@ set(IMGUI_SOURCES
 set(DEBUG_SOURCES
   ${CHESS_SOURCES}
   ${IMGUI_SOURCES}
-  "test/debugger.cpp"
+  "test/debugger/main.cpp"
   "test/debugger/game.cpp"
   "test/debugger/search.cpp"
   "test/debugger/debug.cpp"
@@ -112,6 +112,8 @@ add_subdirectory(vendored/SDL_image EXCLUDE_FROM_ALL)
 foreach(ASSET ${CHESS_ASSETS} "assets/square-moveable.png")
   configure_file(${ASSET} "${CMAKE_BINARY_DIR}/${ASSET}" COPYONLY)
 endforeach()
+
+include_directories("test")
 
 add_executable(debugger ${DEBUG_SOURCES})
 target_link_libraries(debugger PRIVATE SDL3::SDL3 SDL3_image::SDL3_image)

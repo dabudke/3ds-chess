@@ -15,14 +15,14 @@
       "name": "Wait For Debugger (macOS)",
       "request": "attach",
       "type": "lldb-dap",
-      "program": "${workspaceFolder}/build-macos/debugger",
+      "program": "${workspaceFolder}/build-test/debugger",
       "waitFor": true
     },
     {
       "name": "Wait For Magic Generation (macOS)",
       "request": "attach",
       "type": "lldb-dap",
-      "program": "${workspaceFolder}/build-macos/magic-generation",
+      "program": "${workspaceFolder}/build-test/magic-generation",
       "waitFor": true
     }
   ],
