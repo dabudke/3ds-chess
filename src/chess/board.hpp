@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <forward_list>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -46,7 +47,7 @@ public:
   static constexpr uint64_t bitmaskForRow(uint8_t row) { return static_cast<uint64_t>(0xFF) << (row * 8); }
   static constexpr uint64_t bitmaskForCol(uint8_t col) { return 0x0101010101010101ULL << col; }
 
-  inline static int pieceToIndex(Piece::Type type, Piece::Color color) { return type - Piece::Pawn + color; }
+  inline static constexpr int pieceToIndex(Piece::Type type, Piece::Color color) { return type - Piece::Pawn + color; }
   inline static constexpr int pieceToIndex(const Piece &piece) { return piece.piece - Piece::Pawn; }
 
   static const std::array<std::array<uint64_t, 64>, 2> pawnAttacks;
@@ -166,10 +167,24 @@ private:
       // add color to get odd indexes for black
       return bitboards[pieceToIndex(type, color)];
     }
+    const uint64_t &getBitboard(const Piece::Type &type, const Piece::Color &color) const {
+      return bitboards[pieceToIndex(type, color)];
+    }
     /// @brief get a reference to a bitboard for a certain piece
     /// @param piece piece to retrieve the bitboard for
     /// @return reference to the bitboard for the piece
     uint64_t &getBitboard(const Piece &piece) { return bitboards[pieceToIndex(piece)]; }
+    const uint64_t &getBitboard(const Piece &piece) const { return bitboards[pieceToIndex(piece)]; }
+
+    /// @brief get a bitboard of both colors of piece type
+    /// @param type
+    /// @return
+    uint64_t getPieceTypeBitboard(const Piece::Type &type) const {
+      return bitboards[pieceToIndex(type, Piece::White)] | bitboards[pieceToIndex(type, Piece::Black)];
+    }
+    uint64_t getPieceTypeBitboard(const Piece &piece) const {
+      return bitboards[pieceToIndex(piece.type(), Piece::White)] | bitboards[pieceToIndex(piece.type(), Piece::Black)];
+    }
 
     /// @brief calculate a bitboard for all white pieces
     /// @return bitboard of all white pieces
@@ -326,17 +341,17 @@ public:
   static const std::string initialFenString;
   Board() : Board(initialFenString) {}
 
-  const std::vector<Move> getLegalPawnMoves(Piece::Color color, unsigned char square) const;
-  const std::vector<Move> getLegalRookMoves(Piece::Color color, unsigned char square) const;
-  const std::vector<Move> getLegalKnightMoves(Piece::Color color, unsigned char square) const;
-  const std::vector<Move> getLegalBishopMoves(Piece::Color color, unsigned char square) const;
-  const std::vector<Move> getLegalQueenMoves(Piece::Color color, unsigned char square) const;
-  const std::vector<Move> getLegalKingMoves(Piece::Color color, unsigned char square) const;
+  const std::forward_list<Move> getLegalPawnMoves(Piece::Color color, unsigned char square) const;
+  const std::forward_list<Move> getLegalRookMoves(Piece::Color color, unsigned char square) const;
+  const std::forward_list<Move> getLegalKnightMoves(Piece::Color color, unsigned char square) const;
+  const std::forward_list<Move> getLegalBishopMoves(Piece::Color color, unsigned char square) const;
+  const std::forward_list<Move> getLegalQueenMoves(Piece::Color color, unsigned char square) const;
+  const std::forward_list<Move> getLegalKingMoves(Piece::Color color, unsigned char square) const;
 
   /// @brief generate legal moves for the specified square
   /// @param square square to generate moves for
   /// @return vector containing all the moves
-  inline const std::vector<Move> getLegalMovesForSquare(unsigned char square) const {
+  inline const std::forward_list<Move> getLegalMovesForSquare(unsigned char square) const {
     const Piece &piece = getPiece(square);
     switch (piece.type()) {
     case Piece::Pawn:
@@ -352,39 +367,39 @@ public:
     case Piece::King:
       return getLegalKingMoves(piece.color(), square);
     default:
-      return std::vector<Move>{};
+      return std::forward_list<Move>{};
     }
   }
   /// @brief helper function to generate all legal moves on the board
   /// @return all legal moves at current board state
   // TODO - rename getAllLegalMoves
-  inline const std::vector<Move> getLegalMoves() const {
-    std::vector<Move> legalMoves;
+  inline std::forward_list<Move> getLegalMoves() const {
+    std::forward_list<Move> legalMoves;
     Piece::Color currentTurn{whiteMove() ? Piece::White : Piece::Black};
 
     for (auto piece{pieceIndex.getIndex(Piece::Pawn, currentTurn)}; piece != nullptr; piece = piece->next) {
       auto moves = getLegalPawnMoves(currentTurn, piece->square);
-      legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
+      legalMoves.merge(moves);
     }
     for (auto piece{pieceIndex.getIndex(Piece::Rook, currentTurn)}; piece != nullptr; piece = piece->next) {
       auto moves = getLegalRookMoves(currentTurn, piece->square);
-      legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
+      legalMoves.merge(moves);
     }
     for (auto piece{pieceIndex.getIndex(Piece::Knight, currentTurn)}; piece != nullptr; piece = piece->next) {
       auto moves = getLegalKnightMoves(currentTurn, piece->square);
-      legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
+      legalMoves.merge(moves);
     }
     for (auto piece{pieceIndex.getIndex(Piece::Bishop, currentTurn)}; piece != nullptr; piece = piece->next) {
       auto moves = getLegalBishopMoves(currentTurn, piece->square);
-      legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
+      legalMoves.merge(moves);
     }
     for (auto piece{pieceIndex.getIndex(Piece::Queen, currentTurn)}; piece != nullptr; piece = piece->next) {
       auto moves = getLegalQueenMoves(currentTurn, piece->square);
-      legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
+      legalMoves.merge(moves);
     }
     for (auto piece{pieceIndex.getIndex(Piece::King, currentTurn)}; piece != nullptr; piece = piece->next) {
       auto moves = getLegalKingMoves(currentTurn, piece->square);
-      legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
+      legalMoves.merge(moves);
     }
 
     return legalMoves;
