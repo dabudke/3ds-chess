@@ -9,6 +9,11 @@ namespace Chess {
 
 using BoardUtils::StateHistory;
 
+static const uint8_t kingsideRookStart[2] = {7, 63};
+static const uint8_t kingsideRookEnd[2] = {5, 61};
+static const uint8_t queensideRookStart[2] = {0, 56};
+static const uint8_t queensideRookEnd[2] = {3, 59};
+
 #pragma region perform
 void Board::makeMove(const Move &move) {
   Piece piece(getPiece(move.startSquare()));
@@ -23,24 +28,22 @@ void Board::makeMove(const Move &move) {
 
   // handle castling (no captures possible)
   if (move.flags() == Move::Flag::CastleKingside) {
-    unsigned char kingStart = move.startSquare();
-    unsigned char kingEnd = squareOffset(move.startSquare(), 0, 2);
-    unsigned char rookStart = move.endSquare();
-    unsigned char rookEnd = squareOffset(move.endSquare(), 0, -2);
+    const uint8_t kingStart = move.startSquare();
+    const uint8_t kingEnd = move.endSquare();
+    const Piece::Color color = piece.color();
 
     movePiece(piece, kingStart, kingEnd);
-    movePiece(getPiece(rookStart), rookStart, rookEnd);
+    movePiece(getPiece(kingsideRookStart[color]), kingsideRookStart[color], kingsideRookEnd[color]);
     state.pushCastleState(move);
     return;
   }
   if (move.flags() == Move::Flag::CastleQueenside) {
-    unsigned char kingStart = move.startSquare();
-    unsigned char kingEnd = squareOffset(move.startSquare(), 0, -2);
-    unsigned char rookStart = move.endSquare();
-    unsigned char rookEnd = squareOffset(move.endSquare(), 0, 3);
+    const uint8_t kingStart = move.startSquare();
+    const uint8_t kingEnd = move.endSquare();
+    const Piece::Color color = piece.color();
 
     movePiece(piece, kingStart, kingEnd);
-    movePiece(getPiece(rookStart), rookStart, rookEnd);
+    movePiece(getPiece(queensideRookStart[color]), queensideRookStart[color], queensideRookEnd[color]);
     state.pushCastleState(move);
     return;
   }
@@ -60,7 +63,7 @@ void Board::makeMove(const Move &move) {
 
   // en passant is special. my special little boy.
   case Move::Flag::EnPassantCapture: {
-    unsigned char captureSquare = squareOffset(move.endSquare(), whiteMove() ? -1 : 1, 0);
+    uint8_t captureSquare = squareOffset(move.endSquare(), whiteMove() ? -1 : 1, 0);
     capturedPiece = getPiece(captureSquare);
     removePiece(capturedPiece, captureSquare);
     break;
@@ -125,30 +128,28 @@ void Board::makeMove(const Move &move) {
 void Board::unmakeMove() {
   const BoardUtils::State &undoState = state.popSnapshot();
   const Move &move = undoState.getPreviousMove();
+  const Piece movedPiece(getPiece(move.endSquare()));
 
   if (move.flags() == Move::Flag::CastleKingside) {
-    unsigned char kingStart = move.startSquare();
-    unsigned char kingEnd = squareOffset(kingStart, 0, 2);
-    unsigned char rookStart = move.endSquare();
-    unsigned char rookEnd = squareOffset(rookStart, 0, -2);
+    const uint8_t kingStart = move.startSquare();
+    const uint8_t kingEnd = move.endSquare();
+    const Piece::Color color = movedPiece.color();
 
-    movePiece(getPiece(kingEnd), kingEnd, kingStart);
-    movePiece(getPiece(rookEnd), rookEnd, rookStart);
+    movePiece(movedPiece, kingEnd, kingStart);
+    movePiece(getPiece(kingsideRookEnd[color]), kingsideRookEnd[color], kingsideRookStart[color]);
     return;
   }
   if (move.flags() == Move::Flag::CastleQueenside) {
-    unsigned char kingStart = move.startSquare();
-    unsigned char kingEnd = squareOffset(kingStart, 0, -2);
-    unsigned char rookStart = move.endSquare();
-    unsigned char rookEnd = squareOffset(rookStart, 0, 3);
+    const uint8_t kingStart = move.startSquare();
+    const uint8_t kingEnd = move.endSquare();
+    const Piece::Color color = movedPiece.color();
 
-    movePiece(getPiece(kingEnd), kingEnd, kingStart);
-    movePiece(getPiece(rookEnd), rookEnd, rookStart);
+    movePiece(movedPiece, kingEnd, kingStart);
+    movePiece(getPiece(queensideRookEnd[color]), queensideRookEnd[color], queensideRookStart[color]);
     return;
   }
 
   // back to standard moves
-  const Piece movedPiece(getPiece(move.endSquare()));
 
   // handle de-promotions
   switch (move.flags()) {
