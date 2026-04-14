@@ -14,29 +14,46 @@
 // 1100 - white king
 // 1101 - black king
 
+#include <cstdint>
+#include <stdexcept>
+
 namespace Chess {
 struct Piece {
-  typedef unsigned char Color;
-  static constexpr Color White = 0b0000;
-  static constexpr Color Black = 0b0001;
 
-  typedef unsigned char Type;
-  static constexpr Type Pawn = 0b0010;
-  static constexpr Type Rook = 0b0100;
-  static constexpr Type Knight = 0b0110;
-  static constexpr Type Bishop = 0b1000;
-  static constexpr Type Queen = 0b1010;
-  static constexpr Type King = 0b1100;
+  enum Color : uint8_t { White = 0b0000, Black = 0b0001 };
+
+  enum Type : uint8_t {
+    Pawn = 0b0010,
+    Rook = 0b0100,
+    Knight = 0b0110,
+    Bishop = 0b1000,
+    Queen = 0b1010,
+    King = 0b1100,
+  };
 
   unsigned char piece;
 
   constexpr Piece() : piece(0x00) {} // Default constructor for empty piece
-  constexpr Piece(Color color, Type type) : piece(color | type) {}
-  constexpr Piece(unsigned char piece) : piece(piece) {}
+  constexpr Piece(Color color, Type type) : piece(color | type) {
+#ifdef DEBUG
+    if (type < Pawn)
+      throw std::runtime_error("invalid piece created");
+    if (type > King)
+      throw std::runtime_error("invalid piece created");
+#endif
+  }
+  constexpr Piece(unsigned char piece) : piece(piece) {
+#ifdef DEBUG
+    if ((piece & 0b1110) < Pawn)
+      throw std::runtime_error("invalid piece created");
+    if ((piece & 0b1110) > King)
+      throw std::runtime_error("invalid piece created");
+#endif
+  }
 
-  unsigned char color() const { return piece & 0x01; }
-  unsigned char type() const {
-    return piece & 0b1110; // Mask to get the type bits
+  constexpr Color color() const { return static_cast<Color>(piece & 0x01); }
+  constexpr Type type() const {
+    return static_cast<Type>(piece & 0b1110); // Mask to get the type bits
   }
 
   /// @brief promotion constructor
@@ -51,9 +68,9 @@ struct Piece {
   bool operator==(const Piece &other) const { return piece == other.piece; }
   bool operator!=(const Piece &other) const { return piece != other.piece; }
 
-  inline bool isType(const Piece::Type &other) const { return type() == other; }
-  inline bool isColor(const Piece::Color &other) const { return color() == other; }
-  inline bool isWhite() const { return color() == White; }
-  inline bool isBlack() const { return color() == Black; }
+  constexpr bool isType(const Piece::Type &other) const { return type() == other; }
+  constexpr bool isColor(const Piece::Color &other) const { return color() == other; }
+  constexpr bool isWhite() const { return color() == White; }
+  constexpr bool isBlack() const { return color() == Black; }
 };
 } // namespace Chess
