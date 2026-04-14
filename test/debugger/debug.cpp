@@ -1,5 +1,6 @@
 #include "debug.hpp"
 
+#include <cstdio>
 #include <imgui.h>
 #include <map>
 #include <sstream>
@@ -34,10 +35,26 @@ void DebugEngine::draw() {
   }
   ImGui::EndMenuBar();
 
-  if (ImGui::CollapsingHeader("Move History")) {
-    auto moveHistory = game->board.getMoveHistory();
-    for (int i{static_cast<int>(moveHistory.size()) - 1}; i >= 0; i--) {
-      ImGui::Text("%d: %s", i, moveHistory[i].getNotation(Chess::Piece::Empty).c_str());
+  if (ImGui::CollapsingHeader("State History")) {
+    if (ImGui::TreeNode("Initial Position")) {
+      auto state = game->board.getStateHistory().getStateAtHalfmove(0);
+      ImGui::Text("White can castle kingside: %s", state.canWhiteCastleKingside() ? "yes" : "no");
+      ImGui::Text("White can castle queenside: %s", state.canWhiteCastleQueenside() ? "yes" : "no");
+      ImGui::Text("Black can castle kingside: %s", state.canBlackCastleKingside() ? "yes" : "no");
+      ImGui::Text("Black can castle queenside: %s", state.canBlackCastleQueenside() ? "yes" : "no");
+      ImGui::TreePop();
+    }
+    int halfmove{1};
+    char id[20];
+    for (auto state : game->board.getStateHistory()) {
+      snprintf(id, 20, "%d", halfmove);
+      if (ImGui::TreeNode(id, "%d: %s", halfmove, state.getPreviousMove().getNotation(Chess::Piece::Pawn).c_str())) {
+        ImGui::Text("White can castle kingside: %s", state.canWhiteCastleKingside() ? "yes" : "no");
+        ImGui::Text("White can castle queenside: %s", state.canWhiteCastleQueenside() ? "yes" : "no");
+        ImGui::Text("Black can castle kingside: %s", state.canBlackCastleKingside() ? "yes" : "no");
+        ImGui::Text("Black can castle queenside: %s", state.canBlackCastleQueenside() ? "yes" : "no");
+        ImGui::TreePop();
+      }
     }
   }
 

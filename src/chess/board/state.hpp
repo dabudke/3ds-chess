@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#include <iterator>
 #include <stdexcept>
 #include <vector>
 
@@ -17,8 +18,6 @@ class State {
   // `0x02` - black kingside castle available
   // `0x04` - white queenside castle available
   // `0x08` - black queenside castle available
-  // `0x10` - en passant available
-  // `0xE0` - en passant target file
   uint8_t state{0x0F};
   // last made move (uint16)
   Move move{Move::Empty};
@@ -69,9 +68,9 @@ public:
   bool canBlackCastleKingside() const { return (state & blackCastleKingsideMask) != 0; }
   bool canWhiteCastleQueenside() const { return (state & whiteCastleQueensideMask) != 0; }
   bool canBlackCastleQueenside() const { return (state & blackCastleQueensideMask) != 0; }
-  bool enPassantAvailable() const { return (state & enPassantAvailabilityMask) != 0; }
-  int getEnPassantFile() const { return (state & enPassantFileMask) >> enPassantFileShift; }
-  unsigned char getFiftyMoveCounter() const { return fiftyMoveCounter; }
+  bool enPassantAvailable() const { return move.flags() == Move::PawnDoubleMove; }
+  uint8_t getEnPassantFile() const { return move.startSquare() & 0b111; }
+  uint8_t getFiftyMoveCounter() const { return fiftyMoveCounter; }
 
   const Piece &getLastCapture() const { return lastCapture; }
   const Move &getPreviousMove() const { return move; }
@@ -89,6 +88,38 @@ class StateHistory {
   State history[initialHistorySize];
 
 public:
+  struct Iterator {
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type = std::ptrdiff_t;
+    using value_type = const State;
+    using pointer = const State *;
+    using reference = const State &;
+
+    Iterator(pointer ptr) : m_ptr(ptr) {}
+
+    reference operator*() const { return *m_ptr; };
+    pointer operator->() { return m_ptr; }
+
+    Iterator &operator++() {
+      m_ptr++;
+      return *this;
+    }
+    Iterator operator++(int) {
+      Iterator tmp = *this;
+      ++(*this);
+      return tmp;
+    }
+
+    friend bool operator==(const Iterator &a, const Iterator &b) { return a.m_ptr == b.m_ptr; }
+    friend bool operator!=(const Iterator &a, const Iterator &b) { return a.m_ptr != b.m_ptr; }
+
+  private:
+    pointer m_ptr;
+  };
+
+  Iterator begin() const { return Iterator(&history[1]); }
+  Iterator end() const { return Iterator(&history[current + 1]); }
+
   inline unsigned short currentHalfmove() const { return current + startHalfmove; }
   inline unsigned short currentFullmove() const { return (current + startHalfmove) / 2 + 1; }
 

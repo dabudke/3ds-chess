@@ -6,12 +6,24 @@
 #include <string>
 #include <vector>
 
+#include "chess/board/magicBitboards.hpp"
 #include "chess/board/state.hpp"
 #include "chess/move.hpp"
 #include "chess/piece.hpp"
 
+#ifdef DEBUG
+namespace Debugger {
+class Game;
+}
+#endif
+
 namespace Chess {
 class Board {
+
+#ifdef DEBUG
+  friend Debugger::Game;
+#endif
+
 public:
 #pragma region static/helper utils
 
@@ -48,7 +60,13 @@ public:
   static constexpr uint64_t bitmaskForCol(uint8_t col) { return 0x0101010101010101ULL << col; }
 
   inline static constexpr int pieceToIndex(Piece::Type type, Piece::Color color) { return type - Piece::Pawn + color; }
-  inline static constexpr int pieceToIndex(const Piece &piece) { return piece.piece - Piece::Pawn; }
+  inline static constexpr int pieceToIndex(const Piece &piece) {
+#ifdef DEBUG
+    if (piece == Piece::Empty)
+      throw std::runtime_error("converting empty piece to index");
+#endif
+    return piece.piece - Piece::Pawn;
+  }
 
   static const std::array<std::array<uint64_t, 64>, 2> pawnAttacks;
   static const std::array<uint64_t, 64> knightAttacks;
@@ -104,6 +122,12 @@ public:
     /// @param square square to remove from piece index
     inline void popEntry(const Piece &piece, uint8_t square) {
       Entry **entryRoot{&(entryRoots[pieceToIndex(piece)])};
+
+#ifdef DEBUG
+      if ((*entryRoot) == nullptr)
+        throw std::runtime_error("popping piece from square that does not exist");
+#endif
+
       if ((*entryRoot)->square == square) {
         // entry root is the node to delete
         Entry *toDelete{*entryRoot};
@@ -307,6 +331,7 @@ public:
   /// @brief get a vector containing all previous moves made
   /// @return vector containing all previous moves made
   const std::vector<Move> getMoveHistory() const { return state.getMoveHistory(); }
+  const BoardUtils::StateHistory &getStateHistory() const { return state; }
 
   inline unsigned short getHalfmove() const { return state.currentHalfmove(); }
   inline bool whiteMove() const { return state.currentTurnIsWhite(); }
