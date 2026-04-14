@@ -29,6 +29,8 @@ std::string Move::getNotation(Piece movedPiece) const {
   case Piece::King:
     notation.append("K");
     break;
+  case Piece::Pawn:
+    break;
   }
 
   notation.append(1, 'a' + (startSquare() % 8));
