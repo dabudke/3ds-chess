@@ -76,9 +76,9 @@ Board::Board(std::string fen) {
 
   // castling availability
   bool canWhiteCastleKingside = castlingPart.find("K") != std::string::npos;
-  bool canWhiteCastleQueenside = castlingPart.find("Q") == std::string::npos;
-  bool canBlackCastleKingside = castlingPart.find("k") == std::string::npos;
-  bool canBlackCastleQueenside = castlingPart.find("q") == std::string::npos;
+  bool canWhiteCastleQueenside = castlingPart.find("Q") != std::string::npos;
+  bool canBlackCastleKingside = castlingPart.find("k") != std::string::npos;
+  bool canBlackCastleQueenside = castlingPart.find("q") != std::string::npos;
 
   // parse en passant
   bool enPassantAvailable{false};
