@@ -185,7 +185,8 @@ public:
   /// @param castlingChange piece movement that cancels castling rights
   void pushCaptureState(const Move &move, Chess::Piece capturedPiece, CastlingChange castlingChange = None);
 
-  void pushPawnDoubleMoveState(const Move &move);
+  /// @brief push state showing a double pawn push
+  void pushDoublePawnPushState(const Move &move);
 
   /// @brief push state representing a castle
   /// @param move castle move performed

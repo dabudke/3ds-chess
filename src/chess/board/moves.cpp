@@ -22,7 +22,7 @@ void Board::makeMove(const Move &move) {
 
   if (move.flags() == Move::Flag::PawnDoubleMove) {
     movePiece(piece, move.startSquare(), move.endSquare());
-    state.pushPawnDoubleMoveState(move);
+    state.pushDoublePawnPushState(move);
     return;
   }
 

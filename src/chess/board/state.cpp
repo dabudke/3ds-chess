@@ -64,7 +64,7 @@ void BoardUtils::StateHistory::pushCastleState(const Move &move) {
   history[++current] = newState;
 }
 
-void BoardUtils::StateHistory::pushPawnDoubleMoveState(const Move &move) {
+void BoardUtils::StateHistory::pushDoublePawnPushState(const Move &move) {
   State newState(history[current], move, true);
   // mark en passant as available and add the file to state
   newState.state |=

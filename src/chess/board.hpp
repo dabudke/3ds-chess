@@ -76,9 +76,9 @@ public:
   /// @param fen FEN string to parse
   Board(std::string fen);
 
-// board state
 #pragma region board state
 
+private:
   struct PieceIndex {
     /// @brief piece index entry; singly linked list
     struct Entry {
@@ -87,10 +87,6 @@ public:
       Entry(uint8_t square) : square{square}, next{nullptr} {}
     };
 
-  private:
-    Entry *entryRoots[12]{nullptr};
-
-  public:
     PieceIndex() {
       for (int i{0}; i < 12; i++) {
         entryRoots[i] = nullptr;
@@ -161,13 +157,16 @@ public:
         entry->next = new Entry(square);
       }
     }
+
+  private:
+    Entry *entryRoots[12]{nullptr};
   };
 
-private:
   /// @brief helper object to manage state and history of the board
   BoardUtils::StateHistory state;
 
 #pragma region pieces
+
   /// @brief the great chessboard, 8 rows and 8 column
   /// @note to discuss - do we need this representation?
   /// theoretically, bitboards and piece indexes give all the info we need
@@ -178,10 +177,6 @@ private:
 
   /// @brief structure for accessing bitboards for all pieces
   struct Bitboards {
-  private:
-    uint64_t bitboards[12]{0};
-
-  public:
     /// @brief get a reference to a bitboard with piece type and color
     /// @param type type of piece to retrieve bitboard for
     /// @param color color of piece to retrieve bitboard for
@@ -237,6 +232,9 @@ private:
       };
       return bitboard;
     }
+
+  private:
+    uint64_t bitboards[12]{0};
   } bitboards;
 
   /// @brief move a piece in the board array and corresponding bitboard and pieceindex
@@ -293,29 +291,41 @@ private:
 
 #pragma region attacks/pins
 
-  /// @brief check if square is attacked by any enemy piece
-  /// @param occupancy occupancy bitboard
-  /// @param square square to check for attacks on
-  /// @return if the square is attacked by any piece
-  bool squareIsAttacked(const uint64_t &occupancy, uint8_t square);
-
   /// @brief get pieces that attack given square (i.e. get the knight
   /// that needs capturing as it is giving check)
   /// @param occupancy occupancy bitboard
   /// @param square square to check for attackers on
   /// @return bitboard of all attackers
-  uint64_t squareAttackedBy(uint64_t occupancy, uint8_t square);
+  uint64_t attacksToSquare(uint64_t occupancy, uint8_t square) const;
+
+  inline bool squareAttacked(uint64_t occupancy, uint8_t square) const {
+    return attacksToSquare(occupancy, square) != 0;
+  }
+
+  /// @brief get pin mask (pinned piece)
+  /// @param occupancy
+  /// @param square
+  /// @return
+  uint64_t getPinMask(uint64_t occupancy, uint8_t square) const;
+
+  inline uint64_t diagonalAttacks(uint64_t occupancy, uint8_t square) const {
+    const uint64_t *movesets = MagicBitboards::diagMovesets[square];
+    const uint64_t &occupancyMask = MagicBitboards::diagMasks[square];
+    const uint64_t &magic = MagicBitboards::diagMagics[square];
+    const uint8_t &shift = MagicBitboards::diagShifts[square];
+    return movesets[((occupancy & occupancyMask) * magic) >> shift];
+  }
+  inline uint64_t orthogonalAttacks(uint64_t occupancy, uint8_t square) const {
+    const uint64_t *movesets = MagicBitboards::orthMovesets[square];
+    const uint64_t &occupancyMask = MagicBitboards::orthMasks[square];
+    const uint64_t &magic = MagicBitboards::orthMagics[square];
+    const uint8_t &shift = MagicBitboards::orthShifts[square];
+    return movesets[((occupancy & occupancyMask) * magic) >> shift];
+  }
+
+#pragma region getters
 
 public:
-#pragma region getters
-  inline uint64_t getBitboard(Piece::Type type, Piece::Color color) { return bitboards.getBitboard(type, color); }
-
-  inline uint64_t getWhitePieceBitboard() const { return bitboards.getWhitePiecesBitboard(); }
-  inline uint64_t getBlackPieceBitboard() const { return bitboards.getBlackPiecesBitboard(); }
-  inline uint64_t getPieceBitboard() const { return bitboards.getAllPiecesBitboard(); }
-
-  inline const PieceIndex::Entry *getPieceIndex(const Piece &piece) { return pieceIndex.getIndex(piece); }
-
   /// @brief return a snapshot of the current state
   /// @return snapshot of current state
   const BoardUtils::State &getCurrentState() const { return state.getCurrentState(); }
@@ -324,14 +334,14 @@ public:
   bool canWhiteCastleQueenside() const { return state.getCurrentState().canWhiteCastleQueenside(); }
   bool canBlackCastleQueenside() const { return state.getCurrentState().canBlackCastleQueenside(); }
 
+  /// @brief get snapshot of full state history
+  const BoardUtils::StateHistory &getStateHistory() const { return state; }
+  /// @brief get a vector containing all previous moves made
+  const std::vector<Move> getMoveHistory() const { return state.getMoveHistory(); }
+
   /// @brief Get the FEN string of the current position
   /// @return FEN string of current position
   std::string getFenString() const;
-
-  /// @brief get a vector containing all previous moves made
-  /// @return vector containing all previous moves made
-  const std::vector<Move> getMoveHistory() const { return state.getMoveHistory(); }
-  const BoardUtils::StateHistory &getStateHistory() const { return state; }
 
   inline unsigned short getHalfmove() const { return state.currentHalfmove(); }
   inline bool whiteMove() const { return state.currentTurnIsWhite(); }
@@ -347,7 +357,7 @@ public:
 #endif
     return board[index];
   }
-  /// @brief retrieve the peice at the given row and column
+  /// @brief retrieve the piece at the given row and column
   /// @param row
   /// @param col
   /// @return the piece at that given row and column
@@ -395,10 +405,10 @@ public:
       return std::forward_list<Move>{};
     }
   }
+
   /// @brief helper function to generate all legal moves on the board
   /// @return all legal moves at current board state
-  // TODO - rename getAllLegalMoves
-  inline std::forward_list<Move> getLegalMoves() const {
+  inline std::forward_list<Move> getAllLegalMoves() const {
     std::forward_list<Move> legalMoves;
     Piece::Color currentTurn{whiteMove() ? Piece::White : Piece::Black};
 
