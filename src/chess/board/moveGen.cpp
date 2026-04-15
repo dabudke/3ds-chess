@@ -104,8 +104,9 @@ const std::forward_list<Move> Board::getLegalKnightMoves(Piece::Color color, uin
 
   // get moves from precomputed knight attack array
   uint64_t attacks = knightAttacks[square];
-  uint64_t blockerBitmask = getPieceBitboard();
-  uint64_t captureBitmask = color == Piece::White ? getBlackPieceBitboard() : getWhitePieceBitboard();
+  uint64_t blockerBitmask = bitboards.getAllPiecesBitboard();
+  uint64_t captureBitmask =
+      color == Piece::White ? bitboards.getBlackPiecesBitboard() : bitboards.getWhitePiecesBitboard();
 
   uint64_t movesBitboard = attacks & ~blockerBitmask;
   while (movesBitboard) {

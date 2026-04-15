@@ -1,5 +1,4 @@
 #pragma once
-#include <SDL3/SDL.h>
 #include <cstdint>
 #include <map>
 #include <string>
@@ -54,8 +53,6 @@ public:
 
   enum RenderDebugInfo {
     None,
-    Col0,
-    Row0,
     All,
     White,
     Black,

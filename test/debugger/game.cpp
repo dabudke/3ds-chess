@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <forward_list>
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlrenderer3.h>
@@ -41,9 +42,8 @@ unsigned long long Game::perft(int depth) {
     return 1ULL;
 
   unsigned long long moves{0};
-  std::vector<Chess::Move> legalMoves = board.getLegalMoves();
+  std::forward_list<Chess::Move> legalMoves = board.getAllLegalMoves();
   for (auto legalMove : legalMoves) {
-    // the bug is somewhere here
     board.makeMove(legalMove);
     moves += perft(depth - 1);
     board.unmakeMove();
@@ -55,7 +55,7 @@ std::map<Chess::Move, unsigned long long> Game::perftDivide(int depth) {
   if (depth == 0)
     return divided;
 
-  std::vector<Chess::Move> moves = board.getLegalMoves();
+  std::forward_list<Chess::Move> moves = board.getAllLegalMoves();
   for (auto move : moves) {
     board.makeMove(move);
     divided[move] = perft(depth - 1);
@@ -65,7 +65,8 @@ std::map<Chess::Move, unsigned long long> Game::perftDivide(int depth) {
 }
 
 Game::PerftData Game::startPerft(int depth) {
-  auto moves = board.getLegalMoves();
+  auto movesList(board.getAllLegalMoves());
+  std::vector<Chess::Move> moves(movesList.begin(), movesList.end());
   Game::PerftData data{true, depth, {{-1, moves}}};
   return data;
 }
@@ -95,7 +96,8 @@ bool Game::stepPerft(PerftData &data) {
   } else {
     // if not at max depth, deepen by one layer
     if (data.moveList.size() < data.depth) {
-      auto moves = board.getLegalMoves();
+      auto movesList = board.getAllLegalMoves();
+      std::vector<Chess::Move> moves(movesList.begin(), movesList.end());
       int index{-1};
       if (moves.size() > 0) {
         auto &move = moves.front();
@@ -191,20 +193,13 @@ void Game::render(SDL_Renderer *renderer) {
   uint64_t bitboard{0};
   switch (renderBitboard) {
   case All:
-    bitboard = board.getPieceBitboard();
+    bitboard = board.bitboards.getAllPiecesBitboard();
     break;
   case White:
-    bitboard = board.getWhitePieceBitboard();
+    bitboard = board.bitboards.getWhitePiecesBitboard();
     break;
   case Black:
-    bitboard = board.getBlackPieceBitboard();
-    break;
-
-  case Col0:
-    bitboard = board.bitmaskForCol(0);
-    break;
-  case Row0:
-    bitboard = board.bitmaskForRow(0);
+    bitboard = board.bitboards.getBlackPiecesBitboard();
     break;
 
   default: {
@@ -259,7 +254,7 @@ void Game::render(SDL_Renderer *renderer) {
       break;
     }
 
-    bitboard = board.getBitboard(bitboardType, bitboardColor);
+    bitboard = board.bitboards.getBitboard(bitboardType, bitboardColor);
   }
   }
 
@@ -319,7 +314,7 @@ void Game::render(SDL_Renderer *renderer) {
     }
 
     if (renderIndexes != None)
-      pieceIndex = board.getPieceIndex(Chess::Piece(indexColor, indexType));
+      pieceIndex = board.pieceIndex.getIndex(Chess::Piece(indexColor, indexType));
   }
 
   uint64_t selectedBitboard{0};
@@ -334,10 +329,10 @@ void Game::render(SDL_Renderer *renderer) {
         selectedBitboard = board.bitmaskForSquare(selectedAttackingSquares - 1);
       break;
     case Game::White:
-      selectedBitboard = board.getWhitePieceBitboard();
+      selectedBitboard = board.bitboards.getWhitePiecesBitboard();
       break;
     case Game::Black:
-      selectedBitboard = board.getBlackPieceBitboard();
+      selectedBitboard = board.bitboards.getBlackPiecesBitboard();
     default:
       break;
     }
@@ -354,31 +349,13 @@ void Game::render(SDL_Renderer *renderer) {
     case Game::WhiteKing:
       attacksBitboard = board.kingAttacks[selectedAttackingSquares - 1];
       break;
-    case Game::White:
-      if (selectedAttackingSquares == 0) {
-        for (auto piece{board.getPieceIndex(Chess::Piece(Chess::Piece::White, Chess::Piece::Pawn))}; piece != nullptr;
-             piece = piece->next)
-          selectedAttackingSquares |= board.pawnAttacks[Chess::Piece::White][piece->square];
-        for (auto piece{board.getPieceIndex(Chess::Piece(Chess::Piece::White, Chess::Piece::Knight))}; piece != nullptr;
-             piece = piece->next)
-          selectedAttackingSquares |= board.knightAttacks[piece->square];
-        for (auto piece{board.getPieceIndex(Chess::Piece(Chess::Piece::White, Chess::Piece::King))}; piece != nullptr;
-             piece = piece->next)
-          selectedAttackingSquares |= board.kingAttacks[piece->square];
+
+    case Game::AttacksTo:
+      if (selectedAttackingSquares != 0) {
+        attacksBitboard = board.attacksToSquare(board.bitboards.getAllPiecesBitboard(), selectedAttackingSquares - 1);
       }
-    case Game::Black:
-      if (selectedAttackingSquares == 0) {
-        for (auto piece{board.getPieceIndex(Chess::Piece(Chess::Piece::Black, Chess::Piece::Pawn))}; piece != nullptr;
-             piece = piece->next)
-          selectedAttackingSquares |= board.pawnAttacks[Chess::Piece::Black][piece->square];
-        for (auto piece{board.getPieceIndex(Chess::Piece(Chess::Piece::Black, Chess::Piece::Knight))}; piece != nullptr;
-             piece = piece->next)
-          selectedAttackingSquares |= board.knightAttacks[piece->square];
-        for (auto piece{board.getPieceIndex(Chess::Piece(Chess::Piece::Black, Chess::Piece::King))}; piece != nullptr;
-             piece = piece->next)
-          selectedAttackingSquares |= board.kingAttacks[piece->square];
-      }
-      attacksBitboard = selectedAttackingSquares;
+      break;
+
     default:
       break;
     }
