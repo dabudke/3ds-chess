@@ -325,6 +325,7 @@ void Game::render(SDL_Renderer *renderer) {
     case Game::BlackPawn:
     case Game::WhiteKnight:
     case Game::WhiteKing:
+    case Game::AttacksTo:
       if (selectedAttackingSquares != 0)
         selectedBitboard = board.bitmaskForSquare(selectedAttackingSquares - 1);
       break;
@@ -352,7 +353,10 @@ void Game::render(SDL_Renderer *renderer) {
 
     case Game::AttacksTo:
       if (selectedAttackingSquares != 0) {
-        attacksBitboard = board.attacksToSquare(board.bitboards.getAllPiecesBitboard(), selectedAttackingSquares - 1);
+        const Chess::Piece &piece = board.getPiece(selectedAttackingSquares - 1);
+        if (piece != Chess::Piece::Empty)
+          attacksBitboard = board.attacksToSquare(board.bitboards.getAllPiecesBitboard(), selectedAttackingSquares - 1,
+                                                  piece.color());
       }
       break;
 
@@ -518,6 +522,7 @@ void Game::handleMouseDown(SDL_MouseButtonEvent *event) {
     case BlackPawn:
     case WhiteKnight:
     case WhiteKing:
+    case AttacksTo:
       selectedAttackingSquares = square + 1;
       break;
 

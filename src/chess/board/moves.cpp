@@ -23,6 +23,7 @@ void Board::makeMove(const Move &move) {
   if (move.flags() == Move::Flag::PawnDoubleMove) {
     movePiece(piece, move.startSquare(), move.endSquare());
     state.pushDoublePawnPushState(move);
+    refreshEphermalState();
     return;
   }
 
@@ -35,6 +36,7 @@ void Board::makeMove(const Move &move) {
     movePiece(piece, kingStart, kingEnd);
     movePiece(getPiece(kingsideRookStart[color]), kingsideRookStart[color], kingsideRookEnd[color]);
     state.pushCastleState(move);
+    refreshEphermalState();
     return;
   }
   if (move.flags() == Move::Flag::CastleQueenside) {
@@ -45,6 +47,7 @@ void Board::makeMove(const Move &move) {
     movePiece(piece, kingStart, kingEnd);
     movePiece(getPiece(queensideRookStart[color]), queensideRookStart[color], queensideRookEnd[color]);
     state.pushCastleState(move);
+    refreshEphermalState();
     return;
   }
 
@@ -121,6 +124,8 @@ void Board::makeMove(const Move &move) {
     moveAndTransformPiece(piece, move.startSquare(), move.endSquare(), promotionType);
   else
     movePiece(piece, move.startSquare(), move.endSquare());
+
+  refreshEphermalState();
   return;
 }
 
@@ -137,6 +142,7 @@ void Board::unmakeMove() {
 
     movePiece(movedPiece, kingEnd, kingStart);
     movePiece(getPiece(kingsideRookEnd[color]), kingsideRookEnd[color], kingsideRookStart[color]);
+    refreshEphermalState();
     return;
   }
   if (move.flags() == Move::Flag::CastleQueenside) {
@@ -146,6 +152,7 @@ void Board::unmakeMove() {
 
     movePiece(movedPiece, kingEnd, kingStart);
     movePiece(getPiece(queensideRookEnd[color]), queensideRookEnd[color], queensideRookStart[color]);
+    refreshEphermalState();
     return;
   }
 
@@ -190,5 +197,7 @@ void Board::unmakeMove() {
   default:
     break;
   }
+  refreshEphermalState();
+  return;
 }
 } // namespace Chess

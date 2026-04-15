@@ -68,6 +68,7 @@ public:
     BlackQueen,
     WhiteKing,
     BlackKing,
+    AttacksTo,
   };
   RenderDebugInfo renderBitboard{None};
 

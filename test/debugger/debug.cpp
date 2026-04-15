@@ -35,6 +35,8 @@ void DebugEngine::draw() {
   }
   ImGui::EndMenuBar();
 
+  ImGui::Text("In Check: %s", game->board.isInCheck() ? "yes" : "no");
+
   if (ImGui::CollapsingHeader("State History")) {
     if (ImGui::TreeNode("Initial Position")) {
       auto state = game->board.getStateHistory().getStateAtHalfmove(0);
@@ -55,6 +57,7 @@ void DebugEngine::draw() {
         ImGui::Text("Black can castle queenside: %s", state.canBlackCastleQueenside() ? "yes" : "no");
         ImGui::TreePop();
       }
+      halfmove++;
     }
   }
 
@@ -221,6 +224,12 @@ void DebugEngine::draw() {
     if (ImGui::RadioButton("Kings", game->renderAttackBitboard == Game::WhiteKing)) {
       game->renderBitboard = Game::None;
       game->renderAttackBitboard = Game::WhiteKing;
+      game->selectedAttackingSquares = 0;
+    }
+
+    if (ImGui::RadioButton("Attacks To", game->renderAttackBitboard == Game::AttacksTo)) {
+      game->renderBitboard = Game::None;
+      game->renderAttackBitboard = Game::AttacksTo;
       game->selectedAttackingSquares = 0;
     }
   }

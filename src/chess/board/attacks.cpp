@@ -2,10 +2,11 @@
 #include <cstdint>
 
 #include "chess/board.hpp"
+#include "chess/piece.hpp"
 
 namespace Chess {
 #pragma region simple predet
-const auto Board::pawnAttacks = []() constexpr {
+const std::array<std::array<uint64_t, 64>, 2> Board::pawnAttacks = []() constexpr {
   std::array<std::array<uint64_t, 64>, 2> attacks{0};
 
   for (uint8_t i{8}; i < 56; i++) {
@@ -25,7 +26,7 @@ const auto Board::pawnAttacks = []() constexpr {
   return attacks;
 }();
 
-const auto Board::knightAttacks = []() constexpr {
+const std::array<uint64_t, 64> Board::knightAttacks = []() constexpr {
   std::array<uint64_t, 64> attacks{0};
 
   for (uint8_t i{0}; i < 64; i++) {
@@ -66,7 +67,7 @@ const auto Board::knightAttacks = []() constexpr {
   return attacks;
 }();
 
-const auto Board::kingAttacks = []() constexpr {
+const std::array<uint64_t, 64> Board::kingAttacks = []() constexpr {
   std::array<uint64_t, 64> attacks{0};
 
   for (uint8_t i{0}; i < 64; i++) {
@@ -102,8 +103,18 @@ const auto Board::kingAttacks = []() constexpr {
 //   return 0ull;
 // }
 
-// uint64_t Board::squareAttackedBy(uint64_t occupancy, uint8_t square)
-// {
-//   return 0ull;
-// }
+uint64_t Board::attacksToSquare(uint64_t occupancy, uint8_t square, Piece::Color kingColor) const {
+  uint64_t knights, kings, queensAndRooks, queensAndBishops;
+  knights = bitboards.getBitboard(Piece::Knight, !kingColor);
+  kings = bitboards.getBitboard(Piece::King, !kingColor);
+  queensAndRooks = queensAndBishops = bitboards.getBitboard(Piece::Queen, !kingColor);
+  queensAndRooks |= bitboards.getBitboard(Piece::Rook, !kingColor);
+  queensAndBishops |= bitboards.getBitboard(Piece::Bishop, !kingColor);
+
+  return (pawnAttacks[0][square] & bitboards.getBitboard(Piece::Pawn, Piece::Black)) |
+         (pawnAttacks[1][square] & bitboards.getBitboard(Piece::Pawn, Piece::White)) |
+         (knightAttacks[square] & knights) | (kingAttacks[square] & kings) |
+         (diagonalAttacks(occupancy, square) & queensAndBishops) |
+         (orthogonalAttacks(occupancy, square) & queensAndRooks);
+}
 } // namespace Chess

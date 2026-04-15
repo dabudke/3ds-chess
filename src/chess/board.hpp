@@ -2,6 +2,7 @@
 #include <array>
 #include <cstdint>
 #include <forward_list>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -165,6 +166,26 @@ private:
   /// @brief helper object to manage state and history of the board
   BoardUtils::StateHistory state;
 
+  bool inCheck{false};
+  std::unique_ptr<uint64_t> checkMask{nullptr};
+  std::unique_ptr<uint64_t> pinMask{nullptr};
+  void refreshEphermalState() {
+    const uint64_t occupancy{bitboards.getAllPiecesBitboard()};
+    const Piece::Color currentTurn{whiteMove() ? Piece::White : Piece::Black};
+    const uint8_t &kingSquare{pieceIndex.getIndex(Piece::King, currentTurn)->square};
+    const uint64_t calculatedCheckMask = attacksToSquare(occupancy, kingSquare, currentTurn);
+
+    inCheck = calculatedCheckMask != 0;
+    if (inCheck) {
+      checkMask = std::make_unique<uint64_t>(calculatedCheckMask);
+      // TODO - calculate pin mask
+      pinMask = nullptr;
+    } else {
+      checkMask = nullptr;
+      pinMask = nullptr;
+    }
+  }
+
 #pragma region pieces
 
   /// @brief the great chessboard, 8 rows and 8 column
@@ -296,10 +317,10 @@ private:
   /// @param occupancy occupancy bitboard
   /// @param square square to check for attackers on
   /// @return bitboard of all attackers
-  uint64_t attacksToSquare(uint64_t occupancy, uint8_t square) const;
+  uint64_t attacksToSquare(uint64_t occupancy, uint8_t square, Piece::Color kingColor) const;
 
-  inline bool squareAttacked(uint64_t occupancy, uint8_t square) const {
-    return attacksToSquare(occupancy, square) != 0;
+  inline bool squareAttacked(uint64_t occupancy, uint8_t square, Piece::Color kingColor) const {
+    return attacksToSquare(occupancy, square, kingColor) != 0;
   }
 
   /// @brief get pin mask (pinned piece)
@@ -343,9 +364,11 @@ public:
   /// @return FEN string of current position
   std::string getFenString() const;
 
-  inline unsigned short getHalfmove() const { return state.currentHalfmove(); }
+  inline uint8_t getHalfmove() const { return state.currentHalfmove(); }
   inline bool whiteMove() const { return state.currentTurnIsWhite(); }
   inline bool blackMove() const { return state.currentTurnIsBlack(); }
+
+  const bool &isInCheck() const { return inCheck; }
 
   /// @brief retrieve the piece at the given index
   /// @param index index of the square [0,64)

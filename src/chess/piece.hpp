@@ -73,4 +73,7 @@ struct Piece {
   constexpr bool isWhite() const { return color() == White; }
   constexpr bool isBlack() const { return color() == Black; }
 };
+
+constexpr Piece::Color operator!(Piece::Color c) { return static_cast<Piece::Color>((c + 1) % 2); }
+
 } // namespace Chess
